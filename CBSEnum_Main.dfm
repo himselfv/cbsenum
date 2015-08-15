@@ -2,7 +2,7 @@ object MainForm: TMainForm
   Left = 0
   Top = 0
   Caption = 'Packages'
-  ClientHeight = 501
+  ClientHeight = 530
   ClientWidth = 602
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -18,14 +18,13 @@ object MainForm: TMainForm
     Left = 417
     Top = 0
     Width = 185
-    Height = 501
+    Height = 312
     Align = alRight
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitLeft = 348
     DesignSize = (
       185
-      501)
+      312)
     object Label1: TLabel
       Left = 8
       Top = 8
@@ -88,9 +87,7 @@ object MainForm: TMainForm
         Height = 17
         Anchors = [akLeft, akTop, akRight]
         Caption = 'By each part of the name'
-        Checked = True
         TabOrder = 0
-        TabStop = True
         OnClick = rbGroupEachPartClick
       end
       object rbGroupDistinctParts: TRadioButton
@@ -100,7 +97,9 @@ object MainForm: TMainForm
         Height = 17
         Anchors = [akLeft, akTop, akRight]
         Caption = 'By distinct parts'
+        Checked = True
         TabOrder = 1
+        TabStop = True
         OnClick = rbGroupEachPartClick
       end
     end
@@ -109,19 +108,15 @@ object MainForm: TMainForm
     Left = 0
     Top = 0
     Width = 417
-    Height = 501
+    Height = 312
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitLeft = 144
-    ExplicitTop = 304
-    ExplicitWidth = 185
-    ExplicitHeight = 41
     object vtPackages: TVirtualStringTree
       Left = 0
       Top = 24
       Width = 417
-      Height = 477
+      Height = 288
       Align = alClient
       Header.AutoSizeIndex = 0
       Header.Font.Charset = DEFAULT_CHARSET
@@ -135,14 +130,12 @@ object MainForm: TMainForm
       TreeOptions.MiscOptions = [toFullRepaintOnResize, toInitOnSave, toToggleOnDblClick, toWheelPanning, toEditOnClick]
       TreeOptions.PaintOptions = [toHideFocusRect, toShowButtons, toShowDropmark, toShowRoot, toShowTreeLines, toThemeAware, toUseBlendedImages]
       TreeOptions.SelectionOptions = [toFullRowSelect, toRightClickSelect]
+      OnFocusChanged = vtPackagesFocusChanged
       OnFreeNode = vtPackagesFreeNode
       OnGetText = vtPackagesGetText
       OnPaintText = vtPackagesPaintText
       OnGetNodeDataSize = vtPackagesGetNodeDataSize
       OnInitNode = vtPackagesInitNode
-      ExplicitTop = 0
-      ExplicitWidth = 342
-      ExplicitHeight = 501
       Columns = <>
     end
     object edtFilter: TEdit
@@ -161,7 +154,43 @@ object MainForm: TMainForm
       TabOrder = 1
       OnChange = edtFilterChange
       OnKeyDown = edtFilterKeyDown
-      ExplicitWidth = 342
+    end
+  end
+  object pcPageInfo: TPageControl
+    Left = 0
+    Top = 312
+    Width = 602
+    Height = 218
+    ActivePage = TabSheet1
+    Align = alBottom
+    TabOrder = 2
+    object TabSheet1: TTabSheet
+      Caption = 'Info'
+      OnEnter = TabSheet1Enter
+      DesignSize = (
+        594
+        190)
+      object lblDescription: TLabel
+        Left = 6
+        Top = 3
+        Width = 585
+        Height = 54
+        Anchors = [akLeft, akTop, akRight]
+        AutoSize = False
+      end
+      object lbUpdates: TListBox
+        Left = 3
+        Top = 63
+        Width = 587
+        Height = 97
+        Anchors = [akLeft, akTop, akRight]
+        ItemHeight = 13
+        TabOrder = 0
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'Files'
+      ImageIndex = 1
     end
   end
   object PopupMenu: TPopupMenu
@@ -171,6 +200,10 @@ object MainForm: TMainForm
     object pmCopyPackageName: TMenuItem
       Caption = 'Copy package name'
       OnClick = pmCopyPackageNameClick
+    end
+    object pmCopyPackageNames: TMenuItem
+      Caption = 'Copy package names'
+      OnClick = pmCopyPackageNamesClick
     end
     object pmUninstall: TMenuItem
       Caption = 'Uninstall'

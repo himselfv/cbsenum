@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, VirtualTrees, UniStrUtils, Menus, StdCtrls, ExtCtrls,
-  Generics.Collections, Vcl.ImgList;
+  Generics.Collections, Vcl.ImgList, Vcl.ComCtrls;
 
 type
   TPackageData = record
@@ -50,6 +50,12 @@ type
     edtFilter: TEdit;
     Uninstallall1: TMenuItem;
     ImageList1: TImageList;
+    pmCopyPackageNames: TMenuItem;
+    pcPageInfo: TPageControl;
+    TabSheet1: TTabSheet;
+    TabSheet2: TTabSheet;
+    lblDescription: TLabel;
+    lbUpdates: TListBox;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -71,8 +77,13 @@ type
     procedure edtFilterKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure Uninstallall1Click(Sender: TObject);
+    procedure pmCopyPackageNamesClick(Sender: TObject);
+    procedure vtPackagesFocusChanged(Sender: TBaseVirtualTree;
+      Node: PVirtualNode; Column: TColumnIndex);
+    procedure TabSheet1Enter(Sender: TObject);
   protected
     FPackages: TPackageGroup;
+    procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
     function SplitPackageName(AName: string): TStringArray;
     function CreateNode(AParts: TStringArray; APackageName: string): PVirtualNode; overload;
     function CreateNode(AParent: PVirtualNode; ADisplayName, APackageName: string): PVirtualNode; overload;
@@ -85,11 +96,11 @@ type
     procedure ApplyVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
     function IsPackageVisible(ANode: PVirtualNode): boolean;
-    procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
     function GetChildPackageNames(ANode: PVirtualNode): TStringArray;
     procedure GetChildPackageNames_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
-  procedure DismUninstall(const APackageName: string);
+    procedure DismUninstall(const APackageName: string); overload;
+    procedure DismUninstall(const APackageNames: TStringArray); overload;
   public
     procedure Reload;
   end;
@@ -98,7 +109,7 @@ var
   MainForm: TMainForm;
 
 implementation
-uses Registry, Clipbrd;
+uses Registry, Clipbrd, XmlDoc, XmlIntf;
 
 {$R *.dfm}
 
@@ -173,7 +184,7 @@ var group: TPackageGroup;
 begin
   for i := Subgroups.Count-1 downto 0 do begin
     Subgroups[i].CompactNames;
-    if Length(Subgroups[i].Packages)=1 then begin
+    if (Length(Subgroups[i].Packages)=1) and (Subgroups[i].Subgroups.Count=0) then begin
       subpkg := Subgroups[i].Packages[0];
       subpkg.DisplayName := Subgroups[i].Name + '-' + subpkg.DisplayName;
       Self.AddPackage(subpkg);
@@ -471,7 +482,6 @@ begin
   end;
 end;
 
-
 procedure TMainForm.PopupMenuPopup(Sender: TObject);
 var AData: PPackageData;
 begin
@@ -496,22 +506,43 @@ begin
     Clipboard.SetTextBuf(PChar(AData.Name));
 end;
 
+procedure TMainForm.pmCopyPackageNamesClick(Sender: TObject);
+var PackageNames: TStringArray;
+begin
+  if vtPackages.FocusedNode = nil then exit;
+  PackageNames := GetChildPackageNames(vtPackages.FocusedNode);
+  Clipboard.SetTextBuf(PChar(SepJoin(PackageNames, #13)));
+end;
+
 procedure TMainForm.DismUninstall(const APackageName: string);
+var ANames: TStringArray;
+begin
+  SetLength(ANames, 1);
+  ANames[0] := APackageName;
+  DismUninstall(ANames);
+end;
+
+procedure TMainForm.DismUninstall(const APackageNames: TStringArray);
 var startupInfo: TStartupInfo;
   processInfo: TProcessInformation;
   err: cardinal;
+  APackageNamesStr: string;
+  AName: string;
 begin
   FillChar(startupInfo, SizeOf(startupInfo), 0);
   FillChar(processInfo, SizeOf(processInfo), 0);
+  APackageNamesStr := '';
+  for AName in APackageNames do
+    APackageNamesStr := APackageNamesStr + ' /Packagename='+AName;
   if not CreateProcess('C:\Windows\system32\dism.exe',
-    PChar('dism.exe /Online /Remove-Package /Packagename='+APackageName),
+    PChar('dism.exe /Online /Remove-Package '+APackageNamesStr),
     nil, nil, false, 0, nil, nil, startupINfo, processInfo) then
     RaiseLastOsError();
   try
     WaitForSingleObject(processInfo.hProcess, INFINITE);
     if not GetExitCodeProcess(processInfo.hProcess, err) then
       RaiseLastOsError;
-    if err <> 0 then
+    if (err <> 0) and (err <> 3010 {"have to restart PC later"}) then
       MessageBox(Self.Handle, PChar('Uninstall seems to have failed with error code '+IntToStr(err)),
       PChar('Uninstall failed'), MB_ICONERROR);
   finally
@@ -538,7 +569,6 @@ end;
 
 procedure TMainForm.Uninstallall1Click(Sender: TObject);
 var PackageNames: TStringArray;
-  packageName: string;
 begin
   if vtPackages.FocusedNode = nil then
     exit;
@@ -553,9 +583,8 @@ begin
     PChar('Confirm uninstall'),  MB_ICONWARNING or MB_YESNO) <> ID_YES then
     exit;
 
-
-  for packageName in PackageNames do
-    DismUninstall(packageName);
+  DismUninstall(PackageNames);
+  Reload;
 end;
 
 procedure TMainForm.edtFilterChange(Sender: TObject);
@@ -568,6 +597,93 @@ procedure TMainForm.edtFilterKeyDown(Sender: TObject; var Key: Word;
 begin
   if Key = VK_ESCAPE then
     TEdit(Sender).Text := '';
+end;
+
+procedure TMainForm.vtPackagesFocusChanged(Sender: TBaseVirtualTree;
+  Node: PVirtualNode; Column: TColumnIndex);
+begin
+  if Assigned(pcPageInfo.ActivePage.OnEnter) then
+    pcPageInfo.ActivePage.OnEnter(pcPageInfo.ActivePage);
+end;
+
+function GetWindowsDir: string;
+var
+  Buffer: array[0..MAX_PATH] of Char;
+begin
+   GetWindowsDirectory(Buffer, MAX_PATH - 1);
+   SetLength(Result, StrLen(Buffer));
+   Result := Buffer;
+end;
+
+procedure TMainForm.TabSheet1Enter(Sender: TObject);
+var xml: IXmlDocument;
+  NodeData: PPackageData;
+  assembly, package, node: IXmlNode;
+  assemblyName: string;
+  copyright: string;
+  i: integer;
+begin
+  lblDescription.Caption := '';
+  lbUpdates.Items.Clear;
+
+  NodeData := vtPackages.GetNodeData(vtPackages.FocusedNode);
+  if (NodeData = nil) or (NodeData.Name = '') then
+    exit;
+
+  xml := TXmlDocument.Create(GetWindowsDir()+'\servicing\Packages\'+NodeData.Name+'.mum');
+  try
+    assembly := xml.ChildNodes['assembly'];
+    if assembly = nil then exit;
+    package := assembly.ChildNodes['package'];
+
+    assemblyName := '';
+    if assembly.HasAttribute('name') then
+      assemblyName := assemblyName + assembly.Attributes['name']+#13;
+    if assembly.HasAttribute('description') then
+      assemblyName := assemblyName + assembly.Attributes['description']+#13;
+    if (assemblyName='') and (package <> nil) then begin
+      if package.HasAttribute('name') then
+        assemblyName := assemblyName + package.Attributes['name']+#13;
+      if package.HasAttribute('description') then
+        assemblyName := assemblyName + package.Attributes['description']+#13;
+    end;
+   //If nothing else, use registry package name
+    if assemblyName='' then
+      if (package <> nil) and (package.HasAttribute('identifier')) then
+        lblDescription.Caption := package.Attributes['identifier']
+      else
+        lblDescription.Caption := NodeData.Name;
+
+    copyright := '';
+    if assembly.HasAttribute('copyright') then
+      copyright := copyright + assembly.Attributes['copyright'];
+    if (copyright = '') and (package <> nil) then begin
+      if package.HasAttribute('copyright') then
+        copyright := copyright + package.Attributes['copyright'];
+    end;
+
+    lblDescription.Caption := assemblyName;
+    if copyright <> '' then
+      lblDescription.Caption := lblDescription.Caption + #13 + copyright;
+
+    if package <> nil then
+      for i := 0 to package.ChildNodes.Count-1 do begin
+        node := package.ChildNodes[i];
+        if node.NodeName='update' then begin
+          assemblyName := '';
+          if node.HasAttribute('displayName') then
+            assemblyName := assemblyName + node.Attributes['displayName'] + ' ';
+          if node.HasAttribute('description') then
+            assemblyName := assemblyName + node.Attributes['description'] + ' ';
+          if assemblyName = '' then
+            assemblyName := node.Attributes['name'];
+          lbUpdates.Items.Add(assemblyName);
+        end;
+      end;
+
+  finally
+    xml := nil;
+  end;
 end;
 
 end.
