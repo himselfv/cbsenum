@@ -1,0 +1,12 @@
+syntax:glob
+
+__history/*
+*.local
+*.dcu
+*.rsm
+*.identcache
+*.vlb
+
+# Binary
+*.dll
+*.exe
