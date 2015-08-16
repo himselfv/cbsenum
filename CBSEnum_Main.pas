@@ -349,7 +349,13 @@ begin
       raise Exception.Create(sCannotOpenCbsRegistry);
     reg.GetKeyNames(packages);
     for i := 0 to packages.Count-1 do begin
-      package := FPackages.AddPackage(packages[i]);
+      if rbGroupFlat.Checked then begin
+        package := TPackage.Create;
+        package.Name := packages[i];
+        package.DisplayName := packages[i];
+        FPackages.Packages.Add(package);
+      end else
+        package := FPackages.AddPackage(packages[i]);
       reg.CloseKey;
       if not reg.OpenKey(sCbsKey+'\Packages\'+packages[i], false) then
         continue; //because whatever
@@ -369,7 +375,17 @@ begin
 
     if rbGroupDistinctParts.Checked then
       FPackages.CompactNames;
-    ReloadPackageTree(FPackages, nil);
+
+    vtPackages.BeginUpdate;
+    try
+      ReloadPackageTree(FPackages, nil);
+      if rbGroupFlat.Checked then
+        vtPackages.TreeOptions.PaintOptions := vtPackages.TreeOptions.PaintOptions - [toShowRoot]
+      else
+        vtPackages.TreeOptions.PaintOptions := vtPackages.TreeOptions.PaintOptions + [toShowRoot];
+    finally
+      vtPackages.EndUpdate;
+    end;
   finally
     FreeAndNil(reg);
   end;
