@@ -245,6 +245,11 @@ object MainForm: TMainForm
     end
     object Service1: TMenuItem
       Caption = 'Service'
+      object pmOpenCBSRegistry: TMenuItem
+        Caption = 'Open CBS registry...'
+        Hint = 'Open registry editor at a CBS key'
+        OnClick = pmOpenCBSRegistryClick
+      end
       object Diskcleanup1: TMenuItem
         Caption = 'Disk cleanup...'
         Hint = 'Run disk cleanup utility'

@@ -62,6 +62,7 @@ type
     Exit1: TMenuItem;
     Optionalfeatures1: TMenuItem;
     pmCopyUninstallationCommands: TMenuItem;
+    pmOpenCBSRegistry: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -89,6 +90,7 @@ type
     procedure Diskcleanup1Click(Sender: TObject);
     procedure Optionalfeatures1Click(Sender: TObject);
     procedure pmCopyUninstallationCommandsClick(Sender: TObject);
+    procedure pmOpenCBSRegistryClick(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
@@ -148,6 +150,30 @@ begin
   if not CreateProcess(PChar(AProgramName), PChar(ACommandLine),
     nil, nil, false, 0, nil, nil, startupInfo, Result) then
     RaiseLastOsError();
+end;
+
+procedure RegeditOpenAndNavigate(const ARegistryPath: string);
+var reg: TRegistry;
+begin
+ //That's the only damn way
+ //Well, there's also regjump.exe from SysInternals but it shows EULA and it's
+ //a dependency.
+ //It can also be done directly using UI automation.
+  reg := TRegistry.Create;
+  try
+    reg.RootKey := HKEY_CURRENT_USER;
+    if not reg.OpenKey('Software', true)
+    or not reg.OpenKey('Microsoft', true)
+    or not reg.OpenKey('Windows', true)
+    or not reg.OpenKey('CurrentVersion', true)
+    or not reg.OpenKey('Applets', true)
+    or not reg.OpenKey('Regedit', true) then
+      raise Exception.Create('Cannot point regedit at a key.');
+    reg.WriteString('LastKey', ARegistryPath);
+  finally
+    FreeAndNil(reg);
+  end;
+  StartProcess(GetWindowsDir()+'\regedit.exe', 'regedit.exe');
 end;
 
 
@@ -263,15 +289,15 @@ begin
   packages := TStringList.Create;
   try
     reg.RootKey := HKEY_LOCAL_MACHINE;
-    if not reg.OpenKey('Software', false)
-    or not reg.OpenKey('Microsoft', false)
-    or not reg.OpenKey('Windows', false)
-    or not reg.OpenKey('CurrentVersion', false) then
-      raise Exception.Create('Cannot open registry key for packages A');
-    if not reg.OpenKey('Component Based Servicing', false) then
-      raise Exception.Create('Cannot open registry key for packages B');
-    if not reg.OpenKey('Packages', false) then
-      raise Exception.Create('Cannot open registry key for packages C');
+    if not reg.OpenKey('Software', true)
+    or not reg.OpenKey('Microsoft', true)
+    or not reg.OpenKey('Windows', true)
+    or not reg.OpenKey('CurrentVersion', true)
+    or not reg.OpenKey('Component Based Servicing', false)
+    or not reg.OpenKey('Packages', false) then
+      raise Exception.Create('Cannot open registry key for packages. Perpahs '
+      +'you''re not running the app with administrator rights? Or the Windows '
+      +'version is incompatible.');
     reg.GetKeyNames(packages);
     for i := 0 to packages.Count-1 do begin
       FPackages.AddPackage(packages[i], packages[i]);
@@ -712,6 +738,12 @@ end;
 procedure TMainForm.Exit1Click(Sender: TObject);
 begin
   Close;
+end;
+
+procedure TMainForm.pmOpenCBSRegistryClick(Sender: TObject);
+begin
+  RegeditOpenAndNavigate('HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\'
+    +'CurrentVersion\Component Based Servicing');
 end;
 
 procedure TMainForm.Diskcleanup1Click(Sender: TObject);
