@@ -10,7 +10,7 @@ object MainForm: TMainForm
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
-  Menu = MainMenu1
+  Menu = MainMenu
   OldCreateOrder = False
   OnShow = FormShow
   PixelsPerInch = 96
@@ -70,17 +70,17 @@ object MainForm: TMainForm
       TabOrder = 2
       OnClick = cbShowWOW64Click
     end
-    object Panel2: TPanel
+    object pnlGroupMode: TPanel
       Left = 0
       Top = 123
       Width = 185
-      Height = 41
+      Height = 62
       Anchors = [akLeft, akTop, akRight]
       BevelOuter = bvNone
       TabOrder = 3
       DesignSize = (
         185
-        41)
+        62)
       object rbGroupEachPart: TRadioButton
         Left = 6
         Top = 0
@@ -101,6 +101,16 @@ object MainForm: TMainForm
         Checked = True
         TabOrder = 1
         TabStop = True
+        OnClick = rbGroupEachPartClick
+      end
+      object rbGroupFlat: TRadioButton
+        Left = 6
+        Top = 46
+        Width = 171
+        Height = 17
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'Flat list'
+        TabOrder = 2
         OnClick = rbGroupEachPartClick
       end
     end
@@ -130,7 +140,7 @@ object MainForm: TMainForm
       TabOrder = 0
       TreeOptions.MiscOptions = [toFullRepaintOnResize, toInitOnSave, toToggleOnDblClick, toWheelPanning, toEditOnClick]
       TreeOptions.PaintOptions = [toHideFocusRect, toShowButtons, toShowDropmark, toShowRoot, toShowTreeLines, toThemeAware, toUseBlendedImages]
-      TreeOptions.SelectionOptions = [toFullRowSelect, toRightClickSelect]
+      TreeOptions.SelectionOptions = [toFullRowSelect, toMultiSelect, toRightClickSelect]
       OnFocusChanged = vtPackagesFocusChanged
       OnFreeNode = vtPackagesFreeNode
       OnGetText = vtPackagesGetText
@@ -197,7 +207,7 @@ object MainForm: TMainForm
   end
   object PopupMenu: TPopupMenu
     OnPopup = PopupMenuPopup
-    Left = 16
+    Left = 144
     Top = 16
     object pmCopyPackageNames: TMenuItem
       Caption = 'Copy package names'
@@ -210,6 +220,21 @@ object MainForm: TMainForm
         'Copy DISM command for uninstalling all selected packages into cl' +
         'ipboard'
       OnClick = pmCopyUninstallationCommandsClick
+    end
+    object pmVisibility: TMenuItem
+      Caption = 'Visibility'
+      object pmMakeVisible: TMenuItem
+        Caption = 'Make visible'
+        OnClick = pmMakeVisibleClick
+      end
+      object pmMakeInvisible: TMenuItem
+        Caption = 'Make invisible'
+        OnClick = pmMakeInvisibleClick
+      end
+      object pmRestoreDefaultVisibility: TMenuItem
+        Caption = 'Restore default visibility'
+        OnClick = pmRestoreDefaultVisibilityClick
+      end
     end
     object pmUninstall: TMenuItem
       Caption = 'Uninstall'
@@ -233,14 +258,29 @@ object MainForm: TMainForm
     Left = 80
     Top = 16
   end
-  object MainMenu1: TMainMenu
-    Left = 144
+  object MainMenu: TMainMenu
+    Left = 16
     Top = 16
     object File1: TMenuItem
       Caption = 'File'
       object Exit1: TMenuItem
         Caption = 'Exit'
         OnClick = Exit1Click
+      end
+    end
+    object Edit1: TMenuItem
+      Caption = 'Edit'
+      object pmMakeAllVisibile: TMenuItem
+        Caption = 'Make all visible'
+        OnClick = pmMakeAllVisibileClick
+      end
+      object pmMakeAllInvisible: TMenuItem
+        Caption = 'Make all invisible'
+        OnClick = pmMakeAllInvisibleClick
+      end
+      object pmRestoreDefaltVisibilityAll: TMenuItem
+        Caption = 'Restore default visibility for all'
+        OnClick = pmRestoreDefaltVisibilityAllClick
       end
     end
     object Service1: TMenuItem
