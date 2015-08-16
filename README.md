@@ -8,7 +8,7 @@ It presents a moderately componentized view into Windows and allows uninstalling
 
 In Windows, this technology is hidden from general public. There's a command-line tool dism.exe to manage CBS packages, but most packages are marked as hidden even from DISM.
 
-![CBSEnum screenshot](https://bitbucket.org/himselfv/cbsenum/raw/tip/Docs/cbsenum-0.8-screenshot.png)
+![CBSEnum screenshot](https://bitbucket.org/himselfv/cbsenum/raw/tip/Docs/cbsenum-0.8-screen.png)
 
 CBSEnum is a graphical interface for DISM which presents packages in a visually simple format, allows to uninstall or mass-uninstall any. It also shows hidden packages, lets you make them visible or restore to original visibility state.
 
