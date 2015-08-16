@@ -24,7 +24,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function AddPackage(APackageName: string; AFullPackageName: string): TPackage;
+    procedure AddPackage(APackageName: string; APackage: TPackage); overload;
+    function AddPackage(AFullPackageName: string): TPackage; overload;
     function FindSubgroup(const AGroupName: string): TPackageGroup;
     function NeedSubgroup(const AGroupName: string): TPackageGroup;
     procedure CompactNames;
@@ -228,28 +229,47 @@ begin
   inherited;
 end;
 
-function TPackageGroup.AddPackage(APackageName: string; AFullPackageName: string): TPackage;
+//Mostly used internally to route package to appropriate group
+procedure TPackageGroup.AddPackage(APackageName: string; APackage: TPackage);
 var pos_minus, pos_tilde: integer;
   AGroupName: string;
   AGroup: TPackageGroup;
 begin
  //Eat one part of the name. Mind names like Microsoft-Windows-Defender~ru-RU (note last minus)
   pos_tilde := pos('~', APackageName);
-  pos_minus := pos('-', APackageName);
-  if (pos_minus > 0) and ((pos_tilde < 0) or (pos_minus < pos_tilde)) then begin
+  repeat
+    pos_minus := pos('-', APackageName);
+    if (pos_minus <= 0) or ((pos_tilde > 0) and (pos_tilde < pos_minus)) then
+      break; //last part
+
     AGroupName := copy(APackageName, 1, pos_minus-1);
     delete(APackageName, 1, pos_minus);
+    pos_tilde := pos_tilde - pos_minus; //since we've eaten some chars
+
+    if SameText(AGroupName, 'WOW64') then begin
+      APackage.Variation := 'WOW64';
+      APackageName := APackageName + ' (WOW64)'; //could be made properly, on display
+      continue; //chew another part
+    end;
+
     AGroup := Self.NeedSubgroup(AGroupName);
-    Result := AGroup.AddPackage(APackageName, AFullPackageName);
-  end else begin
-   //Most package names end with -Package. Ignore this.
-    if (pos_tilde > 0) and SameText(copy(APackageName, 1, pos_tilde-1), 'Package') then
-      delete(APackageName, 1, pos_tilde);
-    Result := TPackage.Create;
-    Result.Name := AFullPackageName;
-    Result.DisplayName := APackageName;
-    Packages.Add(Result);
-  end;
+    AGroup.AddPackage(APackageName, APackage);
+    exit;
+  until false;
+
+ //Most package names end with -Package. Ignore this.
+  if (pos_tilde > 0) and SameText(copy(APackageName, 1, pos_tilde-1), 'Package') then
+    delete(APackageName, 1, pos_tilde);
+  APackage.DisplayName := APackageName;
+  Packages.Add(APackage);
+end;
+
+//Mostly call this from outside
+function TPackageGroup.AddPackage(AFullPackageName: string): TPackage;
+begin
+  Result := TPackage.Create;
+  Result.Name := AFullPackageName;
+  Self.AddPackage(AFullPackageName, Result);
 end;
 
 function TPackageGroup.FindSubgroup(const AGroupName: string): TPackageGroup;
@@ -329,7 +349,7 @@ begin
       raise Exception.Create(sCannotOpenCbsRegistry);
     reg.GetKeyNames(packages);
     for i := 0 to packages.Count-1 do begin
-      package := FPackages.AddPackage(packages[i], packages[i]);
+      package := FPackages.AddPackage(packages[i]);
       reg.CloseKey;
       if not reg.OpenKey(sCbsKey+'\Packages\'+packages[i], false) then
         continue; //because whatever
@@ -499,7 +519,7 @@ begin
     Node := Node.Parent;
     while (Node <> nil) and (Node <> Sender.RootNode) do begin
       NodeData := Sender.GetNodeData(Node);
-      if (NodeData <> nil) and (cbShowWOW64.Checked or not SameText(NodeData.DisplayName, 'WOW64')) then
+      if NodeData <> nil then
         NodeData.IsVisible := true;
       Node := Node.Parent;
     end;
@@ -521,7 +541,7 @@ begin
   Result := true;
   if (not cbShowHidden.Checked) and (NodeData.Package <> nil) and (NodeData.Package.CbsVisibility <> 1) then
     Result := false;
-  if (not cbShowWOW64.Checked) and SameText(NodeData.DisplayName, 'WOW64') then
+  if (not cbShowWOW64.Checked) and (NodeData.Package <> nil) and SameText(NodeData.Package.Variation, 'WOW64') then
     Result := false;
   if (not cbShowKB.Checked) and NodeData.DisplayName.StartsWith('Package_') then
     Result := false;
