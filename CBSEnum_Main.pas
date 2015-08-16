@@ -56,6 +56,12 @@ type
     TabSheet2: TTabSheet;
     lblDescription: TLabel;
     lbUpdates: TListBox;
+    MainMenu1: TMainMenu;
+    File1: TMenuItem;
+    Service1: TMenuItem;
+    Diskcleanup1: TMenuItem;
+    Exit1: TMenuItem;
+    Optionalfeatures1: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -81,6 +87,9 @@ type
     procedure vtPackagesFocusChanged(Sender: TBaseVirtualTree;
       Node: PVirtualNode; Column: TColumnIndex);
     procedure TabSheet1Enter(Sender: TObject);
+    procedure Exit1Click(Sender: TObject);
+    procedure Diskcleanup1Click(Sender: TObject);
+    procedure Optionalfeatures1Click(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
@@ -112,6 +121,36 @@ implementation
 uses Registry, Clipbrd, XmlDoc, XmlIntf;
 
 {$R *.dfm}
+
+
+function GetSystemDir: string;
+var
+  Buffer: array[0..MAX_PATH] of Char;
+begin
+   GetSystemDirectory(Buffer, MAX_PATH - 1);
+   SetLength(Result, StrLen(Buffer));
+   Result := Buffer;
+end;
+
+function GetWindowsDir: string;
+var
+  Buffer: array[0..MAX_PATH] of Char;
+begin
+   GetWindowsDirectory(Buffer, MAX_PATH - 1);
+   SetLength(Result, StrLen(Buffer));
+   Result := Buffer;
+end;
+
+function StartProcess(const AProgramName, ACommandLine: string): TProcessInformation;
+var startupInfo: TStartupInfo;
+begin
+  FillChar(startupInfo, SizeOf(startupInfo), 0);
+  FillChar(Result, SizeOf(Result), 0);
+  if not CreateProcess(PChar(AProgramName), PChar(ACommandLine),
+    nil, nil, false, 0, nil, nil, startupInfo, Result) then
+    RaiseLastOsError();
+end;
+
 
 constructor TPackageGroup.Create;
 begin
@@ -438,7 +477,7 @@ begin
     Node := Node.Parent;
     while Node <> nil do begin
       NodeData := Sender.GetNodeData(Node);
-      if NodeData <> nil then
+      if (NodeData <> nil) and (cbShowWOW64.Checked or not SameText(NodeData.DisplayName, 'WOW64')) then
         NodeData.IsVisible := true;
       Node := Node.Parent;
     end;
@@ -523,21 +562,16 @@ begin
 end;
 
 procedure TMainForm.DismUninstall(const APackageNames: TStringArray);
-var startupInfo: TStartupInfo;
-  processInfo: TProcessInformation;
+var processInfo: TProcessInformation;
   err: cardinal;
   APackageNamesStr: string;
   AName: string;
 begin
-  FillChar(startupInfo, SizeOf(startupInfo), 0);
-  FillChar(processInfo, SizeOf(processInfo), 0);
   APackageNamesStr := '';
   for AName in APackageNames do
     APackageNamesStr := APackageNamesStr + ' /Packagename='+AName;
-  if not CreateProcess('C:\Windows\system32\dism.exe',
-    PChar('dism.exe /Online /Remove-Package '+APackageNamesStr),
-    nil, nil, false, 0, nil, nil, startupINfo, processInfo) then
-    RaiseLastOsError();
+  processInfo := StartProcess(GetSystemDir()+'\dism.exe',
+    PChar('dism.exe /Online /Remove-Package '+APackageNamesStr));
   try
     WaitForSingleObject(processInfo.hProcess, INFINITE);
     if not GetExitCodeProcess(processInfo.hProcess, err) then
@@ -604,15 +638,6 @@ procedure TMainForm.vtPackagesFocusChanged(Sender: TBaseVirtualTree;
 begin
   if Assigned(pcPageInfo.ActivePage.OnEnter) then
     pcPageInfo.ActivePage.OnEnter(pcPageInfo.ActivePage);
-end;
-
-function GetWindowsDir: string;
-var
-  Buffer: array[0..MAX_PATH] of Char;
-begin
-   GetWindowsDirectory(Buffer, MAX_PATH - 1);
-   SetLength(Result, StrLen(Buffer));
-   Result := Buffer;
 end;
 
 procedure TMainForm.TabSheet1Enter(Sender: TObject);
@@ -684,6 +709,21 @@ begin
   finally
     xml := nil;
   end;
+end;
+
+procedure TMainForm.Exit1Click(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TMainForm.Diskcleanup1Click(Sender: TObject);
+begin
+  StartProcess(GetSystemDir()+'\cleanmgr.exe', 'cleanmgr.exe');
+end;
+
+procedure TMainForm.Optionalfeatures1Click(Sender: TObject);
+begin
+  StartProcess(GetSystemDir()+'\OptionalFeatures.exe', 'OptionalFeatures.exe');
 end;
 
 end.

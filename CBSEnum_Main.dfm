@@ -2,29 +2,32 @@ object MainForm: TMainForm
   Left = 0
   Top = 0
   Caption = 'Packages'
-  ClientHeight = 530
-  ClientWidth = 602
+  ClientHeight = 578
+  ClientWidth = 686
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
+  Menu = MainMenu1
   OldCreateOrder = False
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
-    Left = 417
+    Left = 501
     Top = 0
     Width = 185
-    Height = 312
+    Height = 360
     Align = alRight
     BevelOuter = bvNone
     TabOrder = 0
+    ExplicitLeft = 417
+    ExplicitHeight = 292
     DesignSize = (
       185
-      312)
+      360)
     object Label1: TLabel
       Left = 8
       Top = 8
@@ -107,16 +110,18 @@ object MainForm: TMainForm
   object Panel3: TPanel
     Left = 0
     Top = 0
-    Width = 417
-    Height = 312
+    Width = 501
+    Height = 360
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
+    ExplicitWidth = 417
+    ExplicitHeight = 292
     object vtPackages: TVirtualStringTree
       Left = 0
       Top = 24
-      Width = 417
-      Height = 288
+      Width = 501
+      Height = 336
       Align = alClient
       Header.AutoSizeIndex = 0
       Header.Font.Charset = DEFAULT_CHARSET
@@ -136,12 +141,15 @@ object MainForm: TMainForm
       OnPaintText = vtPackagesPaintText
       OnGetNodeDataSize = vtPackagesGetNodeDataSize
       OnInitNode = vtPackagesInitNode
+      ExplicitTop = 18
+      ExplicitWidth = 417
+      ExplicitHeight = 268
       Columns = <>
     end
     object edtFilter: TEdit
       Left = 0
       Top = 0
-      Width = 417
+      Width = 501
       Height = 24
       Align = alTop
       BevelInner = bvNone
@@ -154,43 +162,50 @@ object MainForm: TMainForm
       TabOrder = 1
       OnChange = edtFilterChange
       OnKeyDown = edtFilterKeyDown
+      ExplicitWidth = 417
     end
   end
   object pcPageInfo: TPageControl
     Left = 0
-    Top = 312
-    Width = 602
+    Top = 360
+    Width = 686
     Height = 218
     ActivePage = TabSheet1
     Align = alBottom
     TabOrder = 2
+    ExplicitTop = 292
+    ExplicitWidth = 602
     object TabSheet1: TTabSheet
       Caption = 'Info'
       OnEnter = TabSheet1Enter
+      ExplicitWidth = 594
       DesignSize = (
-        594
+        678
         190)
       object lblDescription: TLabel
         Left = 6
         Top = 3
-        Width = 585
+        Width = 669
         Height = 54
         Anchors = [akLeft, akTop, akRight]
         AutoSize = False
+        ExplicitWidth = 585
       end
       object lbUpdates: TListBox
         Left = 3
         Top = 63
-        Width = 587
+        Width = 671
         Height = 97
         Anchors = [akLeft, akTop, akRight]
         ItemHeight = 13
         TabOrder = 0
+        ExplicitWidth = 587
       end
     end
     object TabSheet2: TTabSheet
       Caption = 'Files'
       ImageIndex = 1
+      ExplicitWidth = 594
     end
   end
   object PopupMenu: TPopupMenu
@@ -224,5 +239,29 @@ object MainForm: TMainForm
   object ImageList1: TImageList
     Left = 80
     Top = 16
+  end
+  object MainMenu1: TMainMenu
+    Left = 144
+    Top = 16
+    object File1: TMenuItem
+      Caption = 'File'
+      object Exit1: TMenuItem
+        Caption = 'Exit'
+        OnClick = Exit1Click
+      end
+    end
+    object Service1: TMenuItem
+      Caption = 'Service'
+      object Diskcleanup1: TMenuItem
+        Caption = 'Disk cleanup...'
+        Hint = 'Run disk cleanup utility'
+        OnClick = Diskcleanup1Click
+      end
+      object Optionalfeatures1: TMenuItem
+        Caption = 'Optional features...'
+        Hint = 'Enable or disalbe optional Windows features'
+        OnClick = Optionalfeatures1Click
+      end
+    end
   end
 end
