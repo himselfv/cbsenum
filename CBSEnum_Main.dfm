@@ -35,29 +35,21 @@ object MainForm: TMainForm
     end
     object Label2: TLabel
       Left = 6
-      Top = 104
+      Top = 106
       Width = 33
       Height = 13
       Caption = 'Group:'
     end
     object cbShowWOW64: TCheckBox
       Left = 6
-      Top = 27
-      Width = 171
-      Height = 17
-      Anchors = [akLeft, akTop, akRight]
-      Caption = 'WOW64 versions'
-      TabOrder = 0
-      OnClick = cbShowWOW64Click
-    end
-    object cbShowLang: TCheckBox
-      Left = 6
       Top = 50
       Width = 171
       Height = 17
       Anchors = [akLeft, akTop, akRight]
-      Caption = 'Language variations'
-      TabOrder = 1
+      Caption = 'WOW64 versions'
+      Checked = True
+      State = cbChecked
+      TabOrder = 0
       OnClick = cbShowWOW64Click
     end
     object cbShowKb: TCheckBox
@@ -67,17 +59,17 @@ object MainForm: TMainForm
       Height = 17
       Anchors = [akLeft, akTop, akRight]
       Caption = 'KB updates'
-      TabOrder = 2
+      TabOrder = 1
       OnClick = cbShowWOW64Click
     end
     object pnlGroupMode: TPanel
       Left = 0
-      Top = 123
+      Top = 125
       Width = 185
       Height = 62
       Anchors = [akLeft, akTop, akRight]
       BevelOuter = bvNone
-      TabOrder = 3
+      TabOrder = 2
       DesignSize = (
         185
         62)
@@ -113,6 +105,18 @@ object MainForm: TMainForm
         TabOrder = 2
         OnClick = rbGroupEachPartClick
       end
+    end
+    object cbShowHidden: TCheckBox
+      Left = 6
+      Top = 27
+      Width = 171
+      Height = 17
+      Anchors = [akLeft, akTop, akRight]
+      Caption = 'Hidden packages'
+      Checked = True
+      State = cbChecked
+      TabOrder = 3
+      OnClick = cbShowWOW64Click
     end
   end
   object Panel3: TPanel
@@ -199,10 +203,6 @@ object MainForm: TMainForm
         ItemHeight = 13
         TabOrder = 0
       end
-    end
-    object tsFiles: TTabSheet
-      Caption = 'Files'
-      ImageIndex = 1
     end
   end
   object PopupMenu: TPopupMenu

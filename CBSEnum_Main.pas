@@ -11,6 +11,7 @@ type
   TPackage = class
     Name: string; //full package name
     DisplayName: string; //display name
+    Variation: string; //base/WOW64
     CbsVisibility: integer;
     DefaultCbsVisibility: integer; //if preserved in DefVis key by anyone
   end;
@@ -44,7 +45,6 @@ type
     Label1: TLabel;
     cbShowWOW64: TCheckBox;
     PopupMenu: TPopupMenu;
-    cbShowLang: TCheckBox;
     cbShowKb: TCheckBox;
     pmUninstall: TMenuItem;
     N1: TMenuItem;
@@ -61,7 +61,6 @@ type
     pmCopyPackageNames: TMenuItem;
     pcPageInfo: TPageControl;
     tsInfo: TTabSheet;
-    tsFiles: TTabSheet;
     lblDescription: TLabel;
     lbUpdates: TListBox;
     MainMenu: TMainMenu;
@@ -81,6 +80,7 @@ type
     pmMakeAllVisibile: TMenuItem;
     pmMakeAllInvisible: TMenuItem;
     pmRestoreDefaltVisibilityAll: TMenuItem;
+    cbShowHidden: TCheckBox;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -121,24 +121,23 @@ type
     procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
     function CreateNode(AParent: PVirtualNode; ADisplayName: string; APackage: TPackage): PVirtualNode;
     function FindNode(AParent: PVirtualNode; ADisplayName: string): PVirtualNode;
-    procedure UpdateNodeVisibility(AParent: PVirtualNode = nil);
+    procedure UpdateNodeVisibility();
     procedure ResetVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
     procedure UpdatePackageVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
     procedure ApplyVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
-    function IsPackageVisible(ANode: PVirtualNode): boolean;
+    function IsPackageNodeVisible(ANode: PVirtualNode): boolean;
   protected
     function GetAllPackages: TPackageArray;
     function GetSelectedPackages: TPackageArray;
     function GetChildPackages(ANode: PVirtualNode): TPackageArray;
     procedure GetPackages_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
+    function PackagesToPackageNames(APackages: TPackageArray): TStringArray;
     function GetSelectedPackageNames: TStringArray;
     function GetChildPackageNames(ANode: PVirtualNode): TStringArray;
-    procedure GetPackageNames_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
-      Data: Pointer; var Abort: Boolean);
   protected
     procedure DismUninstall(const APackageName: string); overload;
     procedure DismUninstall(const APackageNames: TStringArray); overload;
@@ -384,7 +383,7 @@ begin
   AData := vtPackages.GetNodeData(Result);
   AData.DisplayName := ADisplayName;
   AData.Package := APackage;
-  vtPackages.IsVisible[Result] := IsPackageVisible(Result);
+  vtPackages.IsVisible[Result] := IsPackageNodeVisible(Result); //not enough though, see UpdateNodeVisibility
 end;
 
 function TMainForm.FindNode(AParent: PVirtualNode; ADisplayName: string): PVirtualNode;
@@ -461,8 +460,15 @@ begin
   Reload;
 end;
 
-procedure TMainForm.UpdateNodeVisibility(AParent: PVirtualNode = nil);
+procedure TMainForm.UpdateNodeVisibility();
 begin
+ //Big idea with visibility:
+ //Leaf nodes (packages) are visible or invisible according to a set of rules -
+ //see IsPackageNodeVisible.
+ //Group nodes are by default all invisible, but are made visible as required
+ //to show all visible leaf nodes.
+ //It is therefore hard to update visibility on just one leaf node, as this can
+ //potentially change visibility on group nodes up to the top.
   vtPackages.BeginUpdate;
   try
    //Groups have to stay visible when one of their child nodes is visible,
@@ -488,7 +494,7 @@ procedure TMainForm.UpdatePackageVisibility_Callback(Sender: TBaseVirtualTree; N
 var NodeData: PNdPackageData;
 begin
   NodeData := Sender.GetNodeData(Node);
-  if IsPackageVisible(Node) then begin //save on re-scanning the parents when nothing changed
+  if (NodeData.Package <> nil) and IsPackageNodeVisible(Node) then begin //save on re-scanning the parents when nothing changed
     NodeData.IsVisible := True;
     Node := Node.Parent;
     while (Node <> nil) and (Node <> Sender.RootNode) do begin
@@ -508,11 +514,13 @@ begin
   Sender.IsVisible[Node] := NodeData.IsVisible;
 end;
 
-function TMainForm.IsPackageVisible(ANode: PVirtualNode): boolean;
+function TMainForm.IsPackageNodeVisible(ANode: PVirtualNode): boolean;
 var NodeData: PNdPackageData;
 begin
   NodeData := vtPackages.GetNodeData(ANode);
   Result := true;
+  if (not cbShowHidden.Checked) and (NodeData.Package <> nil) and (NodeData.Package.CbsVisibility <> 1) then
+    Result := false;
   if (not cbShowWOW64.Checked) and SameText(NodeData.DisplayName, 'WOW64') then
     Result := false;
   if (not cbShowKB.Checked) and NodeData.DisplayName.StartsWith('Package_') then
@@ -536,66 +544,61 @@ var node: PVirtualNode;
 begin
   SetLength(Result, 0);
   for node in vtPackages.SelectedNodes() do
-    vtPackages.IterateSubtree(node, GetPackages_Callback, @Result)
+    vtPackages.IterateSubtree(node, GetPackages_Callback, @Result, [vsVisible]);
 end;
 
 //Returns a list of all Packages in this node and its children
 function TMainForm.GetChildPackages(ANode: PVirtualNode): TPackageArray;
 begin
   SetLength(Result, 0);
-  vtPackages.IterateSubtree(ANode, GetPackages_Callback, @Result)
+  vtPackages.IterateSubtree(ANode, GetPackages_Callback, @Result, [vsVisible])
+end;
+
+function IsPackageInList(const AList: TPackageArray; APackage: TPackage): boolean; inline;
+var i: integer;
+begin
+  Result := false;
+  for i := 0 to Length(AList)-1 do
+    if AList[i]=APackage then begin
+      Result := true;
+      break;
+    end;
 end;
 
 procedure TMainForm.GetPackages_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
   Data: Pointer; var Abort: Boolean);
 var List: PPackageArray absolute Data;
   NodeData: PNdPackageData;
-  i: integer;
 begin
   NodeData := Sender.GetNodeData(Node);
   if NodeData.Package <> nil then begin
    //This is required if we allow multiselect on different levels
    //Both parent and one of its children can be selected independently => doubles
-    for i := 0 to Length(List^)-1 do
-      if List^[i]=NodeData.Package then
-        exit;
+    if IsPackageInList(List^, NodeData.Package) then
+      exit;
     SetLength(List^, Length(List^)+1);
     List^[Length(List^)-1] := NodeData.Package;
   end;
 end;
 
+function TMainForm.PackagesToPackageNames(APackages: TPackageArray): TStringArray;
+var i: integer;
+begin
+  SetLength(Result, Length(APackages));
+  for i := 0 to Length(APackages)-1 do
+    Result[i] := APackages[i].Name;
+end;
+
 //Returns a list of package names for all Packages in all selected nodes and its subnodes
 function TMainForm.GetSelectedPackageNames: TStringArray;
-var node: PVirtualNode;
 begin
-  SetLength(Result, 0);
-  for node in vtPackages.SelectedNodes() do
-    vtPackages.IterateSubtree(node, GetPackageNames_Callback, @Result)
+  Result := PackagesToPackageNames(GetSelectedPackages());
 end;
 
 //Returns a list of package names for all Packages in this node and its children
 function TMainForm.GetChildPackageNames(ANode: PVirtualNode): TStringArray;
 begin
-  SetLength(Result, 0);
-  vtPackages.IterateSubtree(ANode, GetPackageNames_Callback, @Result)
-end;
-
-procedure TMainForm.GetPackageNames_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
-  Data: Pointer; var Abort: Boolean);
-var List: PStringArray absolute Data;
-  NodeData: PNdPackageData;
-  i: integer;
-begin
-  NodeData := Sender.GetNodeData(Node);
-  if NodeData.Package <> nil then begin
-   //This is required if we allow multiselect on different levels
-   //Both parent and one of its children can be selected independently => doubles
-    for i := 0 to Length(List^)-1 do
-      if SameText(List^[i], NodeData.Package.Name) then
-        exit;
-    SetLength(List^, Length(List^)+1);
-    List^[Length(List^)-1] := NodeData.Package.Name;
-  end;
+  Result := PackagesToPackageNames(GetChildPackages(ANode));
 end;
 
 procedure TMainForm.PopupMenuPopup(Sender: TObject);
@@ -767,6 +770,7 @@ begin
     FreeAndNil(reg);
   end;
 
+  UpdateNodeVisibility(); //update everywhere because it's easier than figuring out who's whose parent and whatnot
   vtPackages.InvalidateChildren(nil, false);
   vtPackages.Repaint;
 end;
