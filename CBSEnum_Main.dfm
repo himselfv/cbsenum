@@ -23,8 +23,6 @@ object MainForm: TMainForm
     Align = alRight
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitLeft = 417
-    ExplicitHeight = 292
     DesignSize = (
       185
       360)
@@ -115,8 +113,6 @@ object MainForm: TMainForm
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitWidth = 417
-    ExplicitHeight = 292
     object vtPackages: TVirtualStringTree
       Left = 0
       Top = 24
@@ -141,9 +137,6 @@ object MainForm: TMainForm
       OnPaintText = vtPackagesPaintText
       OnGetNodeDataSize = vtPackagesGetNodeDataSize
       OnInitNode = vtPackagesInitNode
-      ExplicitTop = 18
-      ExplicitWidth = 417
-      ExplicitHeight = 268
       Columns = <>
     end
     object edtFilter: TEdit
@@ -162,7 +155,6 @@ object MainForm: TMainForm
       TabOrder = 1
       OnChange = edtFilterChange
       OnKeyDown = edtFilterKeyDown
-      ExplicitWidth = 417
     end
   end
   object pcPageInfo: TPageControl
@@ -170,15 +162,12 @@ object MainForm: TMainForm
     Top = 360
     Width = 686
     Height = 218
-    ActivePage = TabSheet1
+    ActivePage = tsInfo
     Align = alBottom
     TabOrder = 2
-    ExplicitTop = 292
-    ExplicitWidth = 602
-    object TabSheet1: TTabSheet
+    object tsInfo: TTabSheet
       Caption = 'Info'
-      OnEnter = TabSheet1Enter
-      ExplicitWidth = 594
+      OnEnter = tsInfoEnter
       DesignSize = (
         678
         190)
@@ -199,34 +188,38 @@ object MainForm: TMainForm
         Anchors = [akLeft, akTop, akRight]
         ItemHeight = 13
         TabOrder = 0
-        ExplicitWidth = 587
       end
     end
-    object TabSheet2: TTabSheet
+    object tsFiles: TTabSheet
       Caption = 'Files'
       ImageIndex = 1
-      ExplicitWidth = 594
     end
   end
   object PopupMenu: TPopupMenu
     OnPopup = PopupMenuPopup
     Left = 16
     Top = 16
-    object pmCopyPackageName: TMenuItem
-      Caption = 'Copy package name'
-      OnClick = pmCopyPackageNameClick
-    end
     object pmCopyPackageNames: TMenuItem
       Caption = 'Copy package names'
+      Hint = 'Copy all selected package names into clipboard'
       OnClick = pmCopyPackageNamesClick
+    end
+    object pmCopyUninstallationCommands: TMenuItem
+      Caption = 'Copy uninstallation commands'
+      Hint = 
+        'Copy DISM command for uninstalling all selected packages into cl' +
+        'ipboard'
+      OnClick = pmCopyUninstallationCommandsClick
     end
     object pmUninstall: TMenuItem
       Caption = 'Uninstall'
-      OnClick = pmUninstallClick
+      Hint = 'Uninstall selected package'
+      OnClick = pmUninstallAllClick
     end
-    object Uninstallall1: TMenuItem
+    object pmUninstallAll: TMenuItem
       Caption = 'Uninstall all'
-      OnClick = Uninstallall1Click
+      Hint = 'Uninstall all selected packages'
+      OnClick = pmUninstallAllClick
     end
     object N1: TMenuItem
       Caption = '-'

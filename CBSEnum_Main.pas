@@ -35,7 +35,6 @@ type
     Label1: TLabel;
     cbShowWOW64: TCheckBox;
     PopupMenu: TPopupMenu;
-    pmCopyPackageName: TMenuItem;
     cbShowLang: TCheckBox;
     cbShowKb: TCheckBox;
     pmUninstall: TMenuItem;
@@ -48,12 +47,12 @@ type
     Panel3: TPanel;
     vtPackages: TVirtualStringTree;
     edtFilter: TEdit;
-    Uninstallall1: TMenuItem;
+    pmUninstallAll: TMenuItem;
     ImageList1: TImageList;
     pmCopyPackageNames: TMenuItem;
     pcPageInfo: TPageControl;
-    TabSheet1: TTabSheet;
-    TabSheet2: TTabSheet;
+    tsInfo: TTabSheet;
+    tsFiles: TTabSheet;
     lblDescription: TLabel;
     lbUpdates: TListBox;
     MainMenu1: TMainMenu;
@@ -62,6 +61,7 @@ type
     Diskcleanup1: TMenuItem;
     Exit1: TMenuItem;
     Optionalfeatures1: TMenuItem;
+    pmCopyUninstallationCommands: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -75,21 +75,20 @@ type
       const TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
       TextType: TVSTTextType);
     procedure PopupMenuPopup(Sender: TObject);
-    procedure pmCopyPackageNameClick(Sender: TObject);
-    procedure pmUninstallClick(Sender: TObject);
     procedure pmReloadClick(Sender: TObject);
     procedure rbGroupEachPartClick(Sender: TObject);
     procedure edtFilterChange(Sender: TObject);
     procedure edtFilterKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
-    procedure Uninstallall1Click(Sender: TObject);
+    procedure pmUninstallAllClick(Sender: TObject);
     procedure pmCopyPackageNamesClick(Sender: TObject);
     procedure vtPackagesFocusChanged(Sender: TBaseVirtualTree;
       Node: PVirtualNode; Column: TColumnIndex);
-    procedure TabSheet1Enter(Sender: TObject);
+    procedure tsInfoEnter(Sender: TObject);
     procedure Exit1Click(Sender: TObject);
     procedure Diskcleanup1Click(Sender: TObject);
     procedure Optionalfeatures1Click(Sender: TObject);
+    procedure pmCopyUninstallationCommandsClick(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
@@ -528,21 +527,12 @@ begin
     AData := nil
   else
     AData := vtPackages.GetNodeData(vtPackages.FocusedNode);
-  pmCopyPackageName.Visible := (AData <> nil) and (AData.Name <> '');
   pmUninstall.Visible := (AData <> nil) and (AData.Name <> '');
 end;
 
 procedure TMainForm.pmReloadClick(Sender: TObject);
 begin
   Reload;
-end;
-
-procedure TMainForm.pmCopyPackageNameClick(Sender: TObject);
-var AData: PPackageData;
-begin
-  AData := vtPackages.GetNodeData(vtPackages.FocusedNode);
-  if AData <> nil then
-    Clipboard.SetTextBuf(PChar(AData.Name));
 end;
 
 procedure TMainForm.pmCopyPackageNamesClick(Sender: TObject);
@@ -585,24 +575,9 @@ begin
   end;
 end;
 
-procedure TMainForm.pmUninstallClick(Sender: TObject);
-var AData: PPackageData;
-begin
-  AData := vtPackages.GetNodeData(vtPackages.FocusedNode);
-  if (AData = nil) or (AData.Name = '') then exit;
-
-  if MessageBox(Self.Handle, PChar('Do you really want to uninstall '#13
-    +AData.Name+'?'+#13
-    +'After uninstalling, it will be impossible to install again without repairing Windows.'),
-    PChar('Confirm uninstall'),  MB_ICONWARNING or MB_YESNO) <> ID_YES then
-    exit;
-
-  DismUninstall(AData.Name);
-  Reload;
-end;
-
-procedure TMainForm.Uninstallall1Click(Sender: TObject);
+procedure TMainForm.pmUninstallAllClick(Sender: TObject);
 var PackageNames: TStringArray;
+  AConfirmationText: string;
 begin
   if vtPackages.FocusedNode = nil then
     exit;
@@ -610,15 +585,38 @@ begin
   PackageNames := GetChildPackageNames(vtPackages.FocusedNode);
   if Length(PackageNames) <= 0 then exit;
 
-  if MessageBox(Self.Handle, PChar('Do you really want to uninstall '
-      +IntToStr(Length(PackageNames))+' packages?'#13
+  if Length(PackageNames) = 1 then
+    AConfirmationText := 'Do you really want to uninstall'#13
+    +PackageNames[0]+'?'+#13
+    +'After uninstalling, it will be impossible to install again without repairing Windows.'
+  else
+    AConfirmationText := 'Do you really want to uninstall '+IntToStr(Length(PackageNames))+' packages?'#13
     +SepJoin(PackageNames, #13)+#13
-    +'After uninstalling, it will be impossible to install again without repairing Windows.'),
+    +'After uninstalling, it will be impossible to install again without repairing Windows.';
+
+  if MessageBox(Self.Handle, PChar(AConfirmationText),
     PChar('Confirm uninstall'),  MB_ICONWARNING or MB_YESNO) <> ID_YES then
     exit;
 
   DismUninstall(PackageNames);
   Reload;
+end;
+
+procedure TMainForm.pmCopyUninstallationCommandsClick(Sender: TObject);
+var PackageNames: TStringArray;
+  AText, APackageName: string;
+begin
+  if vtPackages.FocusedNode = nil then
+    exit;
+
+  PackageNames := GetChildPackageNames(vtPackages.FocusedNode);
+  if Length(PackageNames) <= 0 then exit;
+
+  AText := 'dism.exe /Online /Remove-Package';
+  for APackageName in PackageNames do
+    AText := AText + ' /PackageName='+APackageName;
+
+  Clipboard.SetTextBuf(PChar(AText));
 end;
 
 procedure TMainForm.edtFilterChange(Sender: TObject);
@@ -640,7 +638,7 @@ begin
     pcPageInfo.ActivePage.OnEnter(pcPageInfo.ActivePage);
 end;
 
-procedure TMainForm.TabSheet1Enter(Sender: TObject);
+procedure TMainForm.tsInfoEnter(Sender: TObject);
 var xml: IXmlDocument;
   NodeData: PPackageData;
   assembly, package, node: IXmlNode;
