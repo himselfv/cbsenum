@@ -67,7 +67,6 @@
         <DCC_UsePackage>JvGlobus;JvMM;JvManagedThreads;DBXSqliteDriver;JvDlgs;IndySystem;JvCrypt;StubPanelPkgD17;vclib;inetdbbde;DBXInterBaseDriver;DataSnapClient;DataSnapCommon;DataSnapServer;JvNet;DataSnapProviderClient;JvDotNetCtrls;DBXSybaseASEDriver;DbxCommonDriver;vclimg;VirtualTreesD14;dbxcds;JaletControls;MetropolisUILiveTile;JvXPCtrls;vcldb;vcldsnap;DBXDb2Driver;DBXOracleDriver;CustomIPTransport;JvCore;vclribbon;dsnap;IndyIPServer;IndyCore;vcl;IndyIPCommon;CloudService;DBXMSSQLDriver;JvAppFrm;JvDB;JvRuntimeDesign;inetdbxpress;webdsnap;JclDeveloperTools;JvDocking;adortl;JvWizards;JvHMI;bindcompfmx;JvBands;vcldbx;rtl;dbrtl;DbxClientDriver;bindcomp;inetdb;JvPluginSystem;JclContainers;DBXOdbcDriver;JvCmp;JvSystem;xmlrtl;svnui;ibxpress;JvTimeFramework;JvControls;IndyProtocols;DBXMySQLDriver;vclactnband;bindengine;soaprtl;bindcompdbx;JvJans;JvPageComps;bindcompvcl;JvStdCtrls;JvCustom;Jcl;vclie;JvPrintPreview;vcltouch;websnap;VclSmp;DBXInformixDriver;DataSnapConnectors;dsnapcon;DBXFirebirdDriver;inet;JclVcl;JvPascalInterpreter;vclx;svn;DBXSybaseASADriver;bdertl;dbexpress;DataSnapIndy10ServerTransport;IndyIPClient;$(DCC_UsePackage)</DCC_UsePackage>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
@@ -75,7 +74,6 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_UsePackage>DBXSqliteDriver;IndySystem;DBXInterBaseDriver;DataSnapClient;DataSnapCommon;DataSnapServer;DataSnapProviderClient;DBXSybaseASEDriver;DbxCommonDriver;vclimg;dbxcds;vcldb;vcldsnap;DBXDb2Driver;DBXOracleDriver;CustomIPTransport;dsnap;IndyIPServer;IndyCore;vcl;IndyIPCommon;DBXMSSQLDriver;inetdbxpress;webdsnap;adortl;bindcompfmx;rtl;dbrtl;DbxClientDriver;bindcomp;inetdb;DBXOdbcDriver;xmlrtl;IndyProtocols;DBXMySQLDriver;vclactnband;bindengine;soaprtl;bindcompdbx;bindcompvcl;vclie;vcltouch;websnap;VclSmp;DBXInformixDriver;dsnapcon;DBXFirebirdDriver;inet;vclx;DBXSybaseASADriver;dbexpress;DataSnapIndy10ServerTransport;IndyIPClient;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
