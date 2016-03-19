@@ -16,6 +16,9 @@ type
     DefaultCbsVisibility: integer; //if preserved in DefVis key by anyone
   end;
 
+  TPackageArray = array of TPackage;
+  PPackageArray = ^TPackageArray;
+
   TPackageGroup = class
   protected
     Name: string;
@@ -29,10 +32,9 @@ type
     function FindSubgroup(const AGroupName: string): TPackageGroup;
     function NeedSubgroup(const AGroupName: string): TPackageGroup;
     procedure CompactNames;
+    function SelectMatching(const AMask: string): TPackageArray; overload;
+    procedure SelectMatching(AMask: string; var AArray: TPackageArray); overload;
   end;
-
-  TPackageArray = array of TPackage;
-  PPackageArray = ^TPackageArray;
 
   TNdPackageData = record
     DisplayName: string; //display name
@@ -82,6 +84,9 @@ type
     pmMakeAllInvisible: TMenuItem;
     pmRestoreDefaltVisibilityAll: TMenuItem;
     cbShowHidden: TCheckBox;
+    Uninstallbylist1: TMenuItem;
+    N2: TMenuItem;
+    UninstallListOpenDialog: TOpenDialog;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -116,6 +121,7 @@ type
     procedure pmMakeAllVisibileClick(Sender: TObject);
     procedure pmMakeAllInvisibleClick(Sender: TObject);
     procedure pmRestoreDefaltVisibilityAllClick(Sender: TObject);
+    procedure Uninstallbylist1Click(Sender: TObject);
   protected
     FPackages: TPackageGroup;
   protected
@@ -136,7 +142,6 @@ type
     function GetChildPackages(ANode: PVirtualNode): TPackageArray;
     procedure GetPackages_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Data: Pointer; var Abort: Boolean);
-    function PackagesToPackageNames(APackages: TPackageArray): TStringArray;
     function GetSelectedPackageNames: TStringArray;
     function GetChildPackageNames(ANode: PVirtualNode): TStringArray;
   protected
@@ -213,6 +218,25 @@ begin
   StartProcess(GetWindowsDir()+'\regedit.exe', 'regedit.exe');
 end;
 
+
+function IsPackageInList(const AList: TPackageArray; APackage: TPackage): boolean; inline;
+var i: integer;
+begin
+  Result := false;
+  for i := 0 to Length(AList)-1 do
+    if AList[i]=APackage then begin
+      Result := true;
+      break;
+    end;
+end;
+
+function PackagesToPackageNames(APackages: TPackageArray): TStringArray;
+var i: integer;
+begin
+  SetLength(Result, Length(APackages));
+  for i := 0 to Length(APackages)-1 do
+    Result[i] := APackages[i].Name;
+end;
 
 
 constructor TPackageGroup.Create;
@@ -323,6 +347,86 @@ begin
     Self.Name := Self.Name + '-' + group.Name;
     FreeAndNil(group);
   end;
+end;
+
+
+function WildcardMatchCase(a, w: PChar): boolean;
+label new_segment, test_match;
+var i: integer;
+  star: boolean;
+begin
+new_segment:
+  star := false;
+  if w^='*' then begin
+    star := true;
+    repeat Inc(w) until w^ <> '*';
+  end;
+
+test_match:
+  i := 0;
+  while (w[i]<>#00) and (w[i]<>'*') do
+    if a[i] <> w[i] then begin
+      if a[i]=#00 then begin
+        Result := false;
+        exit;
+      end;
+      if (w[i]='?') and (a[i] <> '.') then begin
+        Inc(i);
+        continue;
+      end;
+      if not star then begin
+        Result := false;
+        exit;
+      end;
+      Inc(a);
+      goto test_match;
+    end else
+      Inc(i);
+
+  if w[i]='*' then begin
+    Inc(a, i);
+    Inc(w, i);
+    goto new_segment;
+  end;
+
+  if a[i]=#00 then begin
+    Result := true;
+    exit;
+  end;
+
+  if (i > 0) and (w[i-1]='*') then begin
+    Result := true;
+    exit;
+  end;
+
+  if not star then begin
+    Result := false;
+    exit;
+  end;
+
+  Inc(a);
+  goto test_match;
+end;
+
+function TPackageGroup.SelectMatching(const AMask: string): TPackageArray;
+begin
+  SetLength(Result, 0);
+  SelectMatching(AMask, Result);
+end;
+
+procedure TPackageGroup.SelectMatching(AMask: string; var AArray: TPackageArray);
+var i: integer;
+begin
+  AMask := AMask.ToLower;
+  for i := 0 to Packages.Count-1 do
+    if WildcardMatchCase(PChar(Packages[i].Name.ToLower), PChar(AMask))
+    and not IsPackageInList(AArray, Packages[i]) then begin
+      SetLength(AArray, Length(AArray)+1);
+      AArray[Length(AArray)-1] := Packages[i];
+    end;
+
+  for i := 0 to Subgroups.Count-1 do
+    Subgroups[i].SelectMatching(AMask, AArray);
 end;
 
 
@@ -590,17 +694,6 @@ begin
   vtPackages.IterateSubtree(ANode, GetPackages_Callback, @Result, [vsVisible])
 end;
 
-function IsPackageInList(const AList: TPackageArray; APackage: TPackage): boolean; inline;
-var i: integer;
-begin
-  Result := false;
-  for i := 0 to Length(AList)-1 do
-    if AList[i]=APackage then begin
-      Result := true;
-      break;
-    end;
-end;
-
 procedure TMainForm.GetPackages_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
   Data: Pointer; var Abort: Boolean);
 var List: PPackageArray absolute Data;
@@ -615,14 +708,6 @@ begin
     SetLength(List^, Length(List^)+1);
     List^[Length(List^)-1] := NodeData.Package;
   end;
-end;
-
-function TMainForm.PackagesToPackageNames(APackages: TPackageArray): TStringArray;
-var i: integer;
-begin
-  SetLength(Result, Length(APackages));
-  for i := 0 to Length(APackages)-1 do
-    Result[i] := APackages[i].Name;
 end;
 
 //Returns a list of package names for all Packages in all selected nodes and its subnodes
@@ -951,6 +1036,48 @@ end;
 procedure TMainForm.Optionalfeatures1Click(Sender: TObject);
 begin
   StartProcess(GetSystemDir()+'\OptionalFeatures.exe', 'OptionalFeatures.exe');
+end;
+
+procedure TMainForm.Uninstallbylist1Click(Sender: TObject);
+var lines: TStringList;
+  line: string;
+  i: integer;
+  packages: TPackageArray;
+  packageNames: TStringArray;
+begin
+  if not UninstallListOpenDialog.Execute then
+    exit;
+
+  SetLength(packages, 0);
+
+  lines := TStringList.Create;
+  try
+    lines.LoadFromFile(UninstallListOpenDialog.FileName);
+
+    for i := 0 to lines.Count-1 do begin
+      line := Trim(lines[i]);
+      if line = '' then continue;
+      if line[1] = '#' then continue;
+      if line.StartsWith('//') then continue;
+
+      FPackages.SelectMatching(line, packages);
+    end;
+  finally
+    FreeAndNil(lines);
+  end;
+
+  packageNames := PackagesToPackageNames(packages);
+
+  if Length(packageNames) <= 0 then begin
+    MessageBox(Self.Handle, PChar('Nothing to remove.'), PChar('Uninstall by list'), MB_ICONINFORMATION + MB_OK);
+    exit;
+  end else
+    if MessageBox(Self.Handle, PChar(IntToStr(Length(packageNames))+' packages is going to be removed. Do you really want to do this?'),
+      PChar('Confirm removal'), MB_ICONQUESTION + MB_YESNO) <> ID_YES then
+      exit;
+
+  DismUninstall(packageNames);
+  Reload;
 end;
 
 end.

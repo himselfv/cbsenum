@@ -263,6 +263,13 @@ object MainForm: TMainForm
     Top = 16
     object File1: TMenuItem
       Caption = 'File'
+      object Uninstallbylist1: TMenuItem
+        Caption = 'Uninstall by list...'
+        OnClick = Uninstallbylist1Click
+      end
+      object N2: TMenuItem
+        Caption = '-'
+      end
       object Exit1: TMenuItem
         Caption = 'Exit'
         OnClick = Exit1Click
@@ -301,5 +308,11 @@ object MainForm: TMainForm
         OnClick = Optionalfeatures1Click
       end
     end
+  end
+  object UninstallListOpenDialog: TOpenDialog
+    Filter = 'All files (*.*)|*.*'
+    Title = 'Select uninstall list'
+    Left = 16
+    Top = 72
   end
 end
