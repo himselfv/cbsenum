@@ -1107,7 +1107,7 @@ end;
 procedure TMainForm.Uninstallbylist1Click(Sender: TObject);
 var lines: TStringList;
   line: string;
-  i: integer;
+  i, i_pos: integer;
   packages: TPackageArray;
   packageNames: TStringArray;
 begin
@@ -1123,8 +1123,14 @@ begin
     for i := 0 to lines.Count-1 do begin
       line := Trim(lines[i]);
       if line = '' then continue;
-      if line[1] = '#' then continue;
       if line.StartsWith('//') then continue;
+
+      // #-style comments are also supported at the end of the line
+      i_pos := pos('#', line);
+      if i_pos > 0 then begin
+        line := Trim(copy(line, 1, i_pos-1));
+        if line = '' then continue;
+      end;
 
       FPackages.SelectMatching(line, packages);
     end;
