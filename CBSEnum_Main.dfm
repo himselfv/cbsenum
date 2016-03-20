@@ -221,6 +221,10 @@ object MainForm: TMainForm
         'ipboard'
       OnClick = pmCopyUninstallationCommandsClick
     end
+    object Saveselectedpackagelist1: TMenuItem
+      Caption = 'Save selected package list...'
+      OnClick = Saveselectedpackagelist1Click
+    end
     object pmVisibility: TMenuItem
       Caption = 'Visibility'
       object pmMakeVisible: TMenuItem
@@ -263,6 +267,10 @@ object MainForm: TMainForm
     Top = 16
     object File1: TMenuItem
       Caption = 'File'
+      object Savepackagelist1: TMenuItem
+        Caption = 'Save package list...'
+        OnClick = Savepackagelist1Click
+      end
       object Uninstallbylist1: TMenuItem
         Caption = 'Uninstall by list...'
         OnClick = Uninstallbylist1Click
@@ -312,7 +320,14 @@ object MainForm: TMainForm
   object UninstallListOpenDialog: TOpenDialog
     Filter = 'All files (*.*)|*.*'
     Title = 'Select uninstall list'
-    Left = 16
+    Left = 56
     Top = 72
+  end
+  object PackageListSaveDialog: TSaveTextFileDialog
+    DefaultExt = '*.*'
+    Filter = 'Text files (*.txt)|*.txt|All files (*.*)|*.*'
+    Title = 'Save package list'
+    Left = 56
+    Top = 136
   end
 end

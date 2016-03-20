@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, VirtualTrees, UniStrUtils, Menus, StdCtrls, ExtCtrls,
-  Generics.Collections, Vcl.ImgList, Vcl.ComCtrls;
+  Generics.Collections, Vcl.ImgList, Vcl.ComCtrls, Vcl.ExtDlgs;
 
 type
   TPackage = class
@@ -87,6 +87,9 @@ type
     Uninstallbylist1: TMenuItem;
     N2: TMenuItem;
     UninstallListOpenDialog: TOpenDialog;
+    Savepackagelist1: TMenuItem;
+    PackageListSaveDialog: TSaveTextFileDialog;
+    Saveselectedpackagelist1: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -122,19 +125,22 @@ type
     procedure pmMakeAllInvisibleClick(Sender: TObject);
     procedure pmRestoreDefaltVisibilityAllClick(Sender: TObject);
     procedure Uninstallbylist1Click(Sender: TObject);
+    procedure Saveselectedpackagelist1Click(Sender: TObject);
+    procedure Savepackagelist1Click(Sender: TObject);
   protected
     FPackages: TPackageGroup;
+    FTotalPackages: integer;
+
   protected
+    FVisiblePackages: integer;
     procedure ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
     function CreateNode(AParent: PVirtualNode; ADisplayName: string; APackage: TPackage): PVirtualNode;
     function FindNode(AParent: PVirtualNode; ADisplayName: string): PVirtualNode;
     procedure UpdateNodeVisibility();
-    procedure ResetVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
-      Data: Pointer; var Abort: Boolean);
-    procedure UpdatePackageVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
-      Data: Pointer; var Abort: Boolean);
-    procedure ApplyVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
-      Data: Pointer; var Abort: Boolean);
+    procedure ResetVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode; Data: Pointer; var Abort: Boolean);
+    procedure UpdatePackageVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode; Data: Pointer; var Abort: Boolean);
+    procedure ApplyVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode; Data: Pointer; var Abort: Boolean);
+    procedure CountVisiblePackages_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode; Data: Pointer; var Abort: Boolean);
     function IsPackageNodeVisible(ANode: PVirtualNode): boolean;
   protected
     function GetAllPackages: TPackageArray;
@@ -148,8 +154,13 @@ type
     procedure DismUninstall(const APackageName: string); overload;
     procedure DismUninstall(const APackageNames: TStringArray); overload;
     procedure SetCbsVisibility(APackages: TPackageArray; AVisibility: integer);
+    procedure SavePackageList(APackageNames: TStringArray);
+
+  protected
+    procedure UpdateFormCaption;
   public
     procedure Reload;
+
   end;
 
 var
@@ -443,7 +454,9 @@ var reg: TRegistry;
 begin
   FreeAndNil(FPackages);
   FPackages := TPackageGroup.Create;
+  FTotalPackages := 0;
   vtPackages.Clear;
+  FVisiblePackages := 0; //will be set in first UpdateNodeVisibility
 
   reg := TRegistry.Create;
   packages := TStringList.Create;
@@ -452,6 +465,7 @@ begin
     if not reg.OpenKey(sCbsKey+'\Packages', false) then
       raise Exception.Create(sCannotOpenCbsRegistry);
     reg.GetKeyNames(packages);
+    FTotalPackages := packages.Count;
     for i := 0 to packages.Count-1 do begin
       if rbGroupFlat.Checked then begin
         package := TPackage.Create;
@@ -477,27 +491,33 @@ begin
       end;
     end;
 
-    if rbGroupDistinctParts.Checked then
-      FPackages.CompactNames;
-
-    vtPackages.BeginUpdate;
-    try
-      ReloadPackageTree(FPackages, nil);
-      if rbGroupFlat.Checked then
-        vtPackages.TreeOptions.PaintOptions := vtPackages.TreeOptions.PaintOptions - [toShowRoot]
-      else
-        vtPackages.TreeOptions.PaintOptions := vtPackages.TreeOptions.PaintOptions + [toShowRoot];
-    finally
-      vtPackages.EndUpdate;
-    end;
   finally
     FreeAndNil(reg);
+  end;
+
+  if rbGroupDistinctParts.Checked then
+    FPackages.CompactNames;
+
+  vtPackages.BeginUpdate;
+  try
+    ReloadPackageTree(FPackages, nil);
+    if rbGroupFlat.Checked then
+      vtPackages.TreeOptions.PaintOptions := vtPackages.TreeOptions.PaintOptions - [toShowRoot]
+    else
+      vtPackages.TreeOptions.PaintOptions := vtPackages.TreeOptions.PaintOptions + [toShowRoot];
+  finally
+    vtPackages.EndUpdate;
   end;
 
  //Have to do it again because just setting Node visibility one by one doesn't
  //take care of parent nodes becoming visible as needed when child nodes are
  //visible.
   UpdateNodeVisibility;
+end;
+
+procedure TMainForm.UpdateFormCaption;
+begin
+  Self.Caption := IntToStr(FVisiblePackages) + ' packages ('+IntToStr(FTotalPackages) + ' total)';
 end;
 
 procedure TMainForm.ReloadPackageTree(AGroup: TPackageGroup; ATreeNode: PVirtualNode);
@@ -512,7 +532,6 @@ begin
   for pkg in AGroup.Packages do
     CreateNode(ATreeNode, pkg.DisplayName, pkg);
 end;
-
 
 function TMainForm.CreateNode(AParent: PVirtualNode; ADisplayName: string;
   APackage: TPackage): PVirtualNode;
@@ -619,6 +638,10 @@ begin
   finally
     vtPackages.EndUpdate;
   end;
+
+  FVisiblePackages := 0;
+  vtPackages.IterateSubtree(nil, CountVisiblePackages_Callback, @FVisiblePackages);
+  UpdateFormCaption;
 end;
 
 procedure TMainForm.ResetVisibility_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode;
@@ -668,6 +691,14 @@ begin
   if (edtFilter.Text <> '') and (pos(LowerCase(edtFilter.Text), LowerCase(NodeData.DisplayName))<=0)
   and ((NodeData.Package=nil) or (pos(LowerCase(edtFilter.Text), LowerCase(NodeData.Package.Name))<=0)) then
     Result := false;
+end;
+
+procedure TMainForm.CountVisiblePackages_Callback(Sender: TBaseVirtualTree; Node: PVirtualNode; Data: Pointer; var Abort: Boolean);
+var NodeData: PNdPackageData;
+begin
+  NodeData := Sender.GetNodeData(Node);
+  if (NodeData.Package <> nil) and Sender.IsVisible[Node] then
+    Inc(PInteger(Data)^);
 end;
 
 
@@ -721,6 +752,32 @@ function TMainForm.GetChildPackageNames(ANode: PVirtualNode): TStringArray;
 begin
   Result := PackagesToPackageNames(GetChildPackages(ANode));
 end;
+
+
+//Saves a list of package names into a file of user choosing
+procedure TMainForm.SavePackageList(APackageNames: TStringArray);
+var sl: TStringList;
+  item: string;
+begin
+  if not PackageListSaveDialog.Execute then exit;
+
+  TArray.Sort<string>(APackageNames);
+
+  sl := TStringList.Create;
+  try
+    for item in APackageNames do
+      sl.Add(item);
+    sl.SaveToFile(PackageListSaveDialog.Filename);
+  finally
+    FreeAndNil(sl);
+  end;
+end;
+
+procedure TMainForm.Savepackagelist1Click(Sender: TObject);
+begin
+  SavePackageList(PackagesToPackageNames(GetAllPackages()));
+end;
+
 
 procedure TMainForm.PopupMenuPopup(Sender: TObject);
 var Packages: TPackageArray;
@@ -833,6 +890,15 @@ begin
     AText := AText + ' /PackageName='+APackageName;
 
   Clipboard.SetTextBuf(PChar(AText));
+end;
+
+procedure TMainForm.Saveselectedpackagelist1Click(Sender: TObject);
+var PackageNames: TStringArray;
+begin
+  PackageNames := GetSelectedPackageNames();
+  if Length(PackageNames) <= 0 then exit;
+
+  SavePackageList(PackageNames);
 end;
 
 //Sets Visibility parameter for all packages from the list where applicable.
