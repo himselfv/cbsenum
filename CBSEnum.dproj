@@ -47,9 +47,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
         <Manifest_File>None</Manifest_File>
-        <VerInfo_Keys>CompanyName=;FileDescription=CBSEnum tool;FileVersion=0.8.0.0;InternalName=;LegalCopyright=me@boku.ru;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=A tool to view and manage CBS packages on Windows</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=CBSEnum tool;FileVersion=0.9.0.0;InternalName=;LegalCopyright=me@boku.ru;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=A tool to view and manage CBS packages on Windows</VerInfo_Keys>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_MinorVer>8</VerInfo_MinorVer>
+        <VerInfo_MinorVer>9</VerInfo_MinorVer>
         <VerInfo_MajorVer>0</VerInfo_MajorVer>
         <VerInfo_Locale>1049</VerInfo_Locale>
         <Icon_MainIcon>CBSEnum_Icon.ico</Icon_MainIcon>
