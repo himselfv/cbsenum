@@ -16,8 +16,24 @@ const
   OBJECT_INHERIT_ACE       = 1;
   CONTAINER_INHERIT_ACE    = 2;
 
+  ACCESS_ALLOWED_ACE_TYPE  = 0;
+
 type
   TLuid = TLargeInteger;
+
+  ACE_HEADER = record
+    AceType: BYTE;
+    AceFlags: BYTE;
+    AceSize: WORD;
+  end;
+  PACE_HEADER = ^ACE_HEADER;
+
+  ACCESS_ALLOWED_ACE = record
+    Header: ACE_HEADER;
+    Mask: ACCESS_MASK;
+    SidStart: DWORD;
+  end;
+  PACCESS_ALLOWED_ACE = ^ACCESS_ALLOWED_ACE;
 
 {$IFDEF DEBUG}
 type
@@ -132,40 +148,40 @@ function AddExplicitPermissions(const AObjectName: string; AObjectType: SE_OBJEC
   APermissions: cardinal): cardinal;
 var pDescriptor: PSecurityDescriptor;
   pDacl: PACL;
-  AceCount: cardinal;
-  pAceEntries, pAceEntry: PEXPLICIT_ACCESS;
+  i: integer;
+  pAce: PACE_HEADER;
   pNewDacl: PACL;
   pNewAccess: EXPLICIT_ACCESS;
 begin
   pNewDacl := nil;
-  pAceEntries := nil;
 
   Log('GetNamedSecurityInfo: '+AObjectName);
   Result := GetNamedSecurityInfo(PChar(AObjectName), AObjectType, DACL_SECURITY_INFORMATION,
     nil, nil, @pDacl, nil, pointer(pDescriptor));
   if Result <> ERROR_SUCCESS then exit;
   try
-    Log('GetExplicitEntriesFromAcl');
-    Result := GetExplicitEntriesFromAcl(pDacl^, AceCount, PEXPLICIT_ACCESS_(@pAceEntries));
-    if Result <> ERROR_SUCCESS then exit; //we could continue and try to write anyway, but let's not take risks
-
     Log('Checking entries...');
-    pAceEntry := pAceEntries;
-    while AceCount > 0 do begin
-      if ((pAceEntry.grfAccessMode = GRANT_ACCESS) or (pAceEntry.grfAccessMode = SET_ACCESS))
-      //we only settle on "all required rights in one go" because otherwise it's just too unstable
-      //we also don't care if there's explicit "deny" or "re-set to less" afterwards, whoever placed it it's their problem
-      and (pAceEntry.grfAccessPermissions and APermissions = APermissions)
-      and (pAceEntry.Trustee.TrusteeForm = TRUSTEE_IS_SID) // I hope TRUSTEE_IS_NAME is never returned, or we have to convert and check
-      and EqualSid(PSID(pAceEntry.Trustee.ptstrName), aTrustee) then begin
-        Log('Existing grant_entry found');
-       //Entry exist!
-        Result := ERROR_SUCCESS;
+    for i := 0 to pDacl.AceCount-1 do begin
+      if not GetAce(pDacl, i, pointer(pAce)) then begin
+        Result := GetLastError(); //we could continue and try to write anyway, but let's not take risks
         exit;
       end;
 
-      Dec(AceCount);
-      Inc(pAceEntry);
+      if pAce.AceType = ACCESS_ALLOWED_ACE_TYPE then
+        Log('Entry: Type='+IntToStr(pAce.AceType)+', mask='+IntToStr(PACCESS_ALLOWED_ACE(pAce)^.Mask))
+      else
+        Log('Entry: Type='+IntToStr(pAce.AceType));
+
+     //we only settle on "all required rights in one go" because otherwise it's just too unstable
+     //we also don't care if there's explicit "deny" or "re-set to less" afterwards, whoever placed it it's their problem
+      if pAce.AceType <> ACCESS_ALLOWED_ACE_TYPE then continue;
+      if PACCESS_ALLOWED_ACE(pAce)^.Mask and APermissions <> APermissions then continue;
+      if not EqualSid(PSID(@PACCESS_ALLOWED_ACE(pAce).SidStart), aTrustee) then continue;
+
+      Log('Existing grant_entry found');
+     //Entry exist!
+      Result := ERROR_SUCCESS;
+      exit;
     end;
 
     Log('Adding new grant_entry');
@@ -187,8 +203,6 @@ begin
     Result := SetNamedSecurityInfo(PChar(AObjectName), AObjectType, DACL_SECURITY_INFORMATION,
       nil, nil, pNewDacl, nil);
   finally
-    if pAceEntries <> nil then
-      LocalFree(NativeUInt(pAceEntries));
     LocalFree(NativeUInt(pDescriptor));
     if pNewDacl <> nil then
       LocalFree(NativeUInt(pNewDacl));
