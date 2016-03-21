@@ -71,10 +71,8 @@ begin
     end;
 
   finally
-    if pSIDAdmin <> nil then begin
+    if pSIDAdmin <> nil then
       FreeSid(pSIDAdmin);
-      pSIDAdmin := nil;
-    end;
 
     Log('Clearing SE_TAKE_OWNERSHIP_NAME');
     SetPrivilege(hProcToken, SE_TAKE_OWNERSHIP_NAME, false);

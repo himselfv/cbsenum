@@ -187,7 +187,7 @@ begin
     Result := SetNamedSecurityInfo(PChar(AObjectName), AObjectType, DACL_SECURITY_INFORMATION,
       nil, nil, pNewDacl, nil);
   finally
-    if pAceEntry <> nil then
+    if pAceEntries <> nil then
       LocalFree(NativeUInt(pAceEntries));
     LocalFree(NativeUInt(pDescriptor));
     if pNewDacl <> nil then
