@@ -16,12 +16,29 @@ CBSEnum is a graphical interface for DISM which presents packages in a visually 
 
 CBSEnum must be run as administrator.
 
-Before anything can be done with packages, you will have to take ownership of `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing` registry key and all subkeys and give yourself write permissions. At this time CBSEnum can't do this for you.
+Before anything can be done with packages, you will have to take ownership of `HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing` registry key and all subkeys and give yourself write permissions. CBSEnum can do this for you: choose "Edit -> Take Ownership".
 
-Before most packages can be deleted, they have to be detached from their mothership package ("Windows Home", "Windows Professional" or "Windows Enterprise"). This is done in registry, [install_wim_tweak tool](http://www.wincert.net/forum/topic/12021-install-wim-tweakexe/) can do this for you. At this time CBSEnum cannot do this for you.
+Before most packages can be deleted, they have to be detached from their mothership package ("Windows Home", "Windows Professional" or "Windows Enterprise"). This can be done with [install_wim_tweak tool](http://www.wincert.net/forum/topic/12021-install-wim-tweakexe/) but now CBSEnum supports this too: "Edit -> Decouple all packages".
 
 Before DISM will work with most packages, they have to be made DISM-visible. This can be done from CBSEnum by right-clicking any package and doing "Visibility -> Make visible". You can also make all packages Visible from Edit menu.
 
 CBSEnum preserves original package visibility in the same way instal_wim_tweak does, in DefVis keys.
 
 When uninstalling packages, exert your usual caution. Uninstalled packages cannot be installed back without their source cabs, which most people don't have. Save for reinstalling the OS, your best bet would be system repair from installation media.
+
+### Bulk removal ###
+
+Starting with 0.9, CBSEnum supports bulk removal scripts. Each line is a package mask:
+
+```
+# Telemetry
+Microsoft-OneCore-AllowTelemetry*
+Microsoft-Windows-Prerelease*
+Microsoft-Windows-DiagTrack*
+# Microsoft-WindowsFeedback*		# Feedback is a useful app to have, but may be seen as telemetry
+Microsoft-OneCore-TroubleShooting*	# Some consider this also part of telemetry.
+Microsoft-Windows-TroubleShooting*
+Microsoft-Windows-ContactSupport*	# Contact Microsoft support
+```
+
+Such scripts, listing all that you feel needs to be removed with comments about the reasons, can be tested in a virtual machine until a satisfying configuration is achieved and then deployed to the actual target.
