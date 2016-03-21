@@ -3,9 +3,9 @@ unit CBSEnum_Main;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, VirtualTrees, UniStrUtils, Menus, StdCtrls, ExtCtrls,
-  Generics.Collections, Vcl.ImgList, Vcl.ComCtrls, Vcl.ExtDlgs;
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs, Menus,
+  StdCtrls, ExtCtrls, ImgList, ComCtrls, ExtDlgs, VirtualTrees, Generics.Collections, Registry,
+  UniStrUtils;
 
 type
   TPackage = class
@@ -84,12 +84,18 @@ type
     pmMakeAllInvisible: TMenuItem;
     pmRestoreDefaltVisibilityAll: TMenuItem;
     cbShowHidden: TCheckBox;
-    Uninstallbylist1: TMenuItem;
+    pmUninstallByList: TMenuItem;
     N2: TMenuItem;
     UninstallListOpenDialog: TOpenDialog;
-    Savepackagelist1: TMenuItem;
+    pmSavePackageList: TMenuItem;
     PackageListSaveDialog: TSaveTextFileDialog;
     Saveselectedpackagelist1: TMenuItem;
+    pmTakeRegistryOwnership: TMenuItem;
+    pmDecoupleAllPackages: TMenuItem;
+    pmDecouplePackages: TMenuItem;
+    N3: TMenuItem;
+    pmCopySubmenu: TMenuItem;
+    pmManageSubmenu: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -124,9 +130,12 @@ type
     procedure pmMakeAllVisibileClick(Sender: TObject);
     procedure pmMakeAllInvisibleClick(Sender: TObject);
     procedure pmRestoreDefaltVisibilityAllClick(Sender: TObject);
-    procedure Uninstallbylist1Click(Sender: TObject);
+    procedure pmUninstallByListClick(Sender: TObject);
     procedure Saveselectedpackagelist1Click(Sender: TObject);
-    procedure Savepackagelist1Click(Sender: TObject);
+    procedure pmSavePackageListClick(Sender: TObject);
+    procedure pmDecoupleAllPackagesClick(Sender: TObject);
+    procedure pmDecouplePackagesClick(Sender: TObject);
+    procedure pmTakeRegistryOwnershipClick(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     FTotalPackages: integer;
@@ -150,10 +159,12 @@ type
       Data: Pointer; var Abort: Boolean);
     function GetSelectedPackageNames: TStringArray;
     function GetChildPackageNames(ANode: PVirtualNode): TStringArray;
+
   protected
     procedure DismUninstall(const APackageName: string); overload;
     procedure DismUninstall(const APackageNames: TStringArray); overload;
-    procedure SetCbsVisibility(APackages: TPackageArray; AVisibility: integer);
+    procedure SetCbsVisibility(const AKey: string; APackages: TPackageArray; AVisibility: integer); overload;
+    procedure SetCbsVisibility(APackages: TPackageArray; AVisibility: integer); overload;
     procedure SavePackageList(APackageNames: TStringArray);
 
   protected
@@ -166,21 +177,27 @@ type
 var
   MainForm: TMainForm;
 
-implementation
-uses Registry, Clipbrd, XmlDoc, XmlIntf;
-
-{$R *.dfm}
-
 const
   hkCbsRoot = HKEY_LOCAL_MACHINE;
+  sCbsRootSec = 'MACHINE'; //for security-related functions
   sCbsKey = 'Software\Microsoft\Windows\CurrentVersion\Component Based Servicing';
+
+const
+  CBS_E_INVALID_PACKAGE = $800F0805;
+
+function IsPackageInList(const AList: TPackageArray; APackage: TPackage): boolean; inline; overload;
+function IsPackageInList(const AList: TStringArray; APackageName: string): boolean; inline; overload;
+
+implementation
+uses Clipbrd, XmlDoc, XmlIntf, AccCtrl, AclHelpers, CBSEnum_JobProcessor, TakeOwnershipJob,
+  DecouplePackagesJob;
+
+{$R *.dfm}
 
 resourcestring
   sCannotOpenCbsRegistry = 'Cannot open registry key for packages. Perpahs '
     +'you''re not running the app with administrator rights? Or the Windows '
     +'version is incompatible.';
-
-
 
 function GetSystemDir: string;
 var
@@ -230,12 +247,23 @@ begin
 end;
 
 
-function IsPackageInList(const AList: TPackageArray; APackage: TPackage): boolean; inline;
+function IsPackageInList(const AList: TPackageArray; APackage: TPackage): boolean; inline; overload;
 var i: integer;
 begin
   Result := false;
   for i := 0 to Length(AList)-1 do
     if AList[i]=APackage then begin
+      Result := true;
+      break;
+    end;
+end;
+
+function IsPackageInList(const AList: TStringArray; APackageName: string): boolean; inline; overload;
+var i: integer;
+begin
+  Result := false;
+  for i := 0 to Length(AList)-1 do
+    if SameText(AList[i], APackageName) then begin
       Result := true;
       break;
     end;
@@ -441,6 +469,76 @@ begin
 end;
 
 
+
+//Sets Visibility parameter for all packages from the list where applicable.
+//Preserves old value in DefVis if none yet preserved (like other tools do).
+//Skips packages where no changes are needed.
+//-1 is a special value meaning "restore to DefVis".
+procedure TMainForm.SetCbsVisibility(const AKey: string; APackages: TPackageArray; AVisibility: integer);
+var package: TPackage;
+  reg: TRegistry;
+  curDefVis: integer;
+begin
+  reg := TRegistry.Create;
+  try
+    reg.RootKey := hkCbsRoot;
+    for package in APackages do try
+      if (AVisibility >= 0) and (package.CbsVisibility = AVisibility) then
+        continue; //nothing to change
+      if (AVisibility < 0) and (package.CbsVisibility = package.DefaultCbsVisibility) then
+        continue;
+      //And there's no point in querying the registry again. Even if someone
+      //changed it in the background, just Refresh() and do this again.
+
+      //We want to store DefVis once, and then never touch it because it contains
+      //original value, whatever changes happen later
+      if not reg.OpenKey(AKey+'\'+Package.Name, false) then exit; //no key, whatever
+      try
+        curDefVis := reg.ReadInteger('DefVis');
+      except
+       //Only write if we can't read, no key. Otherwise leave alone
+        on E: ERegistryException do begin
+         //if there's no key then we set DefaultCbsVisibility to CbsVisibility on load
+          reg.WriteInteger('DefVis', package.DefaultCbsVisibility);
+          curDefVis := package.DefaultCbsVisibility;
+        end;
+      end;
+
+      package.DefaultCbsVisibility := curDefVis; //we've read it anyway
+      if AVisibility >= 0 then
+        package.CbsVisibility := AVisibility
+      else
+        package.CbsVisibility := package.DefaultCbsVisibility;
+      reg.WriteInteger('Visibility', package.CbsVisibility);
+      reg.CloseKey;
+    except
+      on E: ERegistryException do begin
+        reg.CloseKey;
+        if MessageBox(Self.Handle,
+          PChar('Cannot process package '+Package.Name+':'#13+E.Message+'. '
+          +'Continue with other packages nevertheless?'),
+          PChar('Error'), MB_ICONERROR+MB_YESNO) <> ID_YES then break;
+        //else continue, whatever
+      end;
+    end;
+
+  finally
+    FreeAndNil(reg);
+  end;
+end;
+
+procedure TMainForm.SetCbsVisibility(APackages: TPackageArray; AVisibility: integer);
+begin
+  SetCbsVisibility(sCbsKey+'\Packages', APackages, AVisibility);
+  SetCbsVisibility(sCbsKey+'\PackagesPending', APackages, AVisibility);
+
+  UpdateNodeVisibility(); //update everywhere because it's easier than figuring out who's whose parent and whatnot
+  vtPackages.InvalidateChildren(nil, false);
+  vtPackages.Repaint;
+end;
+
+
+
 procedure TMainForm.FormShow(Sender: TObject);
 begin
   Reload;
@@ -462,6 +560,7 @@ begin
   packages := TStringList.Create;
   try
     reg.RootKey := HKEY_LOCAL_MACHINE;
+    reg.Access := KEY_READ;
     if not reg.OpenKey(sCbsKey+'\Packages', false) then
       raise Exception.Create(sCannotOpenCbsRegistry);
     reg.GetKeyNames(packages);
@@ -773,7 +872,7 @@ begin
   end;
 end;
 
-procedure TMainForm.Savepackagelist1Click(Sender: TObject);
+procedure TMainForm.pmSavePackageListClick(Sender: TObject);
 begin
   SavePackageList(PackagesToPackageNames(GetAllPackages()));
 end;
@@ -845,9 +944,19 @@ begin
     WaitForSingleObject(processInfo.hProcess, INFINITE);
     if not GetExitCodeProcess(processInfo.hProcess, err) then
       RaiseLastOsError;
-    if (err <> 0) and (err <> 3010 {"have to restart PC later"}) then
+    case err of
+      0: begin end; // OK
+      ERROR_SUCCESS_REBOOT_REQUIRED: begin end;
+      CBS_E_INVALID_PACKAGE:
+        MessageBox(Self.Handle, PChar('Uninstall says there''s no such package. Perhaps refresh? '+
+          'Or maybe you have forgotten to make packages visible. This also sometimes happens when the '+
+          'package is marked for deletion until reboot.'),
+          PChar('Uninstall failed'), MB_ICONERROR);
+    else
       MessageBox(Self.Handle, PChar('Uninstall seems to have failed with error code '+IntToStr(err)),
-      PChar('Uninstall failed'), MB_ICONERROR);
+        PChar('Uninstall failed'), MB_ICONERROR);
+    end;
+
   finally
     CloseHandle(processInfo.hProcess);
     CloseHandle(processInfo.hThread);
@@ -901,65 +1010,28 @@ begin
   SavePackageList(PackageNames);
 end;
 
-//Sets Visibility parameter for all packages from the list where applicable.
-//Preserves old value in DefVis if none yet preserved (like other tools do).
-//Skips packages where no changes are needed.
-//-1 is a special value meaning "restore to DefVis".
-procedure TMainForm.SetCbsVisibility(APackages: TPackageArray; AVisibility: integer);
-var package: TPackage;
-  reg: TRegistry;
-  curDefVis: integer;
+procedure TMainForm.pmTakeRegistryOwnershipClick(Sender: TObject);
 begin
-  reg := TRegistry.Create;
-  try
-    reg.RootKey := hkCbsRoot;
-    for package in APackages do try
-      if (AVisibility >= 0) and (package.CbsVisibility = AVisibility) then
-        continue; //nothing to change
-      if (AVisibility < 0) and (package.CbsVisibility = package.DefaultCbsVisibility) then
-        continue;
-      //And there's no point in querying the registry again. Even if someone
-      //changed it in the background, just Refresh() and do this again.
+  JobProcessorForm.Caption := 'Taking ownership...';
+  JobProcessorForm.Show();
+  JobProcessorForm.Process(TTakeOwnershipJob.Create())
+end;
 
-      //We want to store DefVis once, and then never touch it because it contains
-      //original value, whatever changes happen later
-      reg.OpenKey(sCbsKey+'\Packages\'+Package.Name, false);
-      try
-        curDefVis := reg.ReadInteger('DefVis');
-      except
-       //Only write if we can't read, no key. Otherwise leave alone
-        on E: ERegistryException do begin
-         //if there's no key then we set DefaultCbsVisibility to CbsVisibility on load
-          reg.WriteInteger('DefVis', package.DefaultCbsVisibility);
-          curDefVis := package.DefaultCbsVisibility;
-        end;
-      end;
+procedure TMainForm.pmDecoupleAllPackagesClick(Sender: TObject);
+begin
+  JobProcessorForm.Caption := 'Decoupling...';
+  JobProcessorForm.Show();
+  JobProcessorForm.Process(TDecouplePackagesJob.Create(nil))
+end;
 
-      package.DefaultCbsVisibility := curDefVis; //we've read it anyway
-      if AVisibility >= 0 then
-        package.CbsVisibility := AVisibility
-      else
-        package.CbsVisibility := package.DefaultCbsVisibility;
-      reg.WriteInteger('Visibility', package.CbsVisibility);
-      reg.CloseKey;
-    except
-      on E: ERegistryException do begin
-        reg.CloseKey;
-        if MessageBox(Self.Handle,
-          PChar('Cannot process package '+Package.Name+':'#13+E.Message+'. '
-          +'Continue with other packages nevertheless?'),
-          PChar('Error'), MB_ICONERROR+MB_YESNO) <> ID_YES then break;
-        //else continue, whatever
-      end;
-    end;
-
-  finally
-    FreeAndNil(reg);
-  end;
-
-  UpdateNodeVisibility(); //update everywhere because it's easier than figuring out who's whose parent and whatnot
-  vtPackages.InvalidateChildren(nil, false);
-  vtPackages.Repaint;
+procedure TMainForm.pmDecouplePackagesClick(Sender: TObject);
+var packages: TStringArray;
+begin
+  packages := GetSelectedPackageNames();
+  if Length(packages) <= 0 then exit; //because that would mean "Decouple all"
+  JobProcessorForm.Caption := 'Decoupling...';
+  JobProcessorForm.Show();
+  JobProcessorForm.Process(TDecouplePackagesJob.Create(packages))
 end;
 
 procedure TMainForm.pmMakeVisibleClick(Sender: TObject);
@@ -1104,7 +1176,7 @@ begin
   StartProcess(GetSystemDir()+'\OptionalFeatures.exe', 'OptionalFeatures.exe');
 end;
 
-procedure TMainForm.Uninstallbylist1Click(Sender: TObject);
+procedure TMainForm.pmUninstallByListClick(Sender: TObject);
 var lines: TStringList;
   line: string;
   i, i_pos: integer;

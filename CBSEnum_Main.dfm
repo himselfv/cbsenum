@@ -209,17 +209,21 @@ object MainForm: TMainForm
     OnPopup = PopupMenuPopup
     Left = 144
     Top = 16
-    object pmCopyPackageNames: TMenuItem
-      Caption = 'Copy package names'
-      Hint = 'Copy all selected package names into clipboard'
-      OnClick = pmCopyPackageNamesClick
-    end
-    object pmCopyUninstallationCommands: TMenuItem
-      Caption = 'Copy uninstallation commands'
-      Hint = 
-        'Copy DISM command for uninstalling all selected packages into cl' +
-        'ipboard'
-      OnClick = pmCopyUninstallationCommandsClick
+    object pmCopySubmenu: TMenuItem
+      Caption = 'Copy'
+      object pmCopyPackageNames: TMenuItem
+        Caption = 'Package names'
+        Hint = 'Copy all selected package names into clipboard'
+        ShortCut = 16451
+        OnClick = pmCopyPackageNamesClick
+      end
+      object pmCopyUninstallationCommands: TMenuItem
+        Caption = 'Uninstallation commands'
+        Hint = 
+          'Copy DISM command for uninstalling all selected packages into cl' +
+          'ipboard'
+        OnClick = pmCopyUninstallationCommandsClick
+      end
     end
     object Saveselectedpackagelist1: TMenuItem
       Caption = 'Save selected package list...'
@@ -238,6 +242,13 @@ object MainForm: TMainForm
       object pmRestoreDefaultVisibility: TMenuItem
         Caption = 'Restore default visibility'
         OnClick = pmRestoreDefaultVisibilityClick
+      end
+    end
+    object pmManageSubmenu: TMenuItem
+      Caption = 'Manage'
+      object pmDecouplePackages: TMenuItem
+        Caption = 'Decouple'
+        OnClick = pmDecouplePackagesClick
       end
     end
     object pmUninstall: TMenuItem
@@ -267,13 +278,13 @@ object MainForm: TMainForm
     Top = 16
     object File1: TMenuItem
       Caption = 'File'
-      object Savepackagelist1: TMenuItem
+      object pmSavePackageList: TMenuItem
         Caption = 'Save package list...'
-        OnClick = Savepackagelist1Click
+        OnClick = pmSavePackageListClick
       end
-      object Uninstallbylist1: TMenuItem
+      object pmUninstallByList: TMenuItem
         Caption = 'Uninstall by list...'
-        OnClick = Uninstallbylist1Click
+        OnClick = pmUninstallByListClick
       end
       object N2: TMenuItem
         Caption = '-'
@@ -285,6 +296,21 @@ object MainForm: TMainForm
     end
     object Edit1: TMenuItem
       Caption = 'Edit'
+      object pmTakeRegistryOwnership: TMenuItem
+        Caption = 'Take registry ownership'
+        Hint = 'Take ownership of CBS registry key in a safe manner'
+        OnClick = pmTakeRegistryOwnershipClick
+      end
+      object pmDecoupleAllPackages: TMenuItem
+        Caption = 'Decouple all packages'
+        Hint = 
+          'Decouple all packages from their configured parents so that they' +
+          ' can be uninstalled separately from the whole system'
+        OnClick = pmDecoupleAllPackagesClick
+      end
+      object N3: TMenuItem
+        Caption = '-'
+      end
       object pmMakeAllVisibile: TMenuItem
         Caption = 'Make all visible'
         OnClick = pmMakeAllVisibileClick
