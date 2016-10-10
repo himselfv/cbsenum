@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs, Menus,
   StdCtrls, ExtCtrls, ImgList, ComCtrls, ExtDlgs, VirtualTrees, Generics.Collections, Registry,
-  UniStrUtils;
+  UniStrUtils, AssemblyDb;
 
 type
   TPackage = class
@@ -96,6 +96,14 @@ type
     N3: TMenuItem;
     pmCopySubmenu: TMenuItem;
     pmManageSubmenu: TMenuItem;
+    tsAssemblies: TTabSheet;
+    tsFiles: TTabSheet;
+    tsRegistryKeys: TTabSheet;
+    lbComponents: TListBox;
+    lbFiles: TListBox;
+    lbRegistryKeys: TListBox;
+    N4: TMenuItem;
+    Rebuildassemblydatabase1: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -136,6 +144,11 @@ type
     procedure pmDecoupleAllPackagesClick(Sender: TObject);
     procedure pmDecouplePackagesClick(Sender: TObject);
     procedure pmTakeRegistryOwnershipClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure tsAssembliesEnter(Sender: TObject);
+    procedure Rebuildassemblydatabase1Click(Sender: TObject);
+    procedure tsFilesEnter(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     FTotalPackages: integer;
@@ -167,6 +180,11 @@ type
     procedure SetCbsVisibility(APackages: TPackageArray; AVisibility: integer); overload;
     procedure SavePackageList(APackageNames: TStringArray);
 
+  protected //Assembly database
+    FDb: TAssemblyDb;
+    procedure ImportAssemblyManifests;
+    procedure RebuildAssemblyDatabase;
+
   protected
     procedure UpdateFormCaption;
   public
@@ -190,7 +208,7 @@ function IsPackageInList(const AList: TStringArray; APackageName: string): boole
 
 implementation
 uses Clipbrd, XmlDoc, XmlIntf, AccCtrl, AclHelpers, CBSEnum_JobProcessor, TakeOwnershipJob,
-  DecouplePackagesJob;
+  DecouplePackagesJob, FilenameUtils, ManifestEnum_Progress;
 
 {$R *.dfm}
 
@@ -538,6 +556,17 @@ begin
 end;
 
 
+
+procedure TMainForm.FormCreate(Sender: TObject);
+begin
+  FDb := TAssemblyDb.Create;
+  FDb.Open(AppFolder+'\assembly.db');
+end;
+
+procedure TMainForm.FormDestroy(Sender: TObject);
+begin
+  FreeAndNil(FDb);
+end;
 
 procedure TMainForm.FormShow(Sender: TObject);
 begin
@@ -1155,6 +1184,107 @@ begin
   end;
 end;
 
+function XmlReadAssemblyIdentityData(ANode: IXmlNode): TAssemblyIdentity;
+begin
+  Result.name := ANode.Attributes['name'];
+  Result.language := ANode.Attributes['language'];
+  Result.buildType := ANode.Attributes['buildType'];
+  Result.processorArchitecture := ANode.Attributes['processorArchitecture'];
+  Result.version := ANode.Attributes['version'];
+  Result.publicKeyToken := ANode.Attributes['publicKeyToken'];
+end;
+
+type
+  TXmlNodeList = array of IXmlNode;
+
+function ListPackageAssemblies(xml: IXmlDocument): TXmlNodeList; overload;
+var assembly, package, update, component, node: IXmlNode;
+  i, j: integer;
+begin
+  SetLength(Result, 0);
+
+  assembly := xml.ChildNodes['assembly'];
+  if assembly = nil then exit;
+  package := assembly.ChildNodes['package'];
+  if package = nil then exit;
+
+  for i := 0 to package.ChildNodes.Count-1 do begin
+    update := package.ChildNodes[i];
+    if update.NodeName <> 'update' then continue;
+
+    for j := 0 to update.ChildNodes.Count-1 do begin
+      component := update.ChildNodes[j];
+      if component.NodeName <> 'component' then continue;
+
+      node := component.ChildNodes.FindNode('assemblyIdentity');
+      if node = nil then continue; //that component wasn't assembly. huh.
+
+      SetLength(Result, Length(Result)+1);
+      Result[Length(Result)-1] := node;
+    end;
+  end;
+end;
+
+
+procedure TMainForm.tsAssembliesEnter(Sender: TObject);
+var xml: IXmlDocument;
+  NodeData: PNdPackageData;
+  node: IXmlNode;
+  assemblyData: TAssemblyIdentity;
+begin
+  lbComponents.Items.Clear;
+
+  NodeData := vtPackages.GetNodeData(vtPackages.FocusedNode);
+  if (NodeData = nil) or (NodeData.Package = nil) then
+    exit;
+
+  xml := TXmlDocument.Create(GetWindowsDir()+'\servicing\Packages\'+NodeData.Package.Name+'.mum');
+  try
+    for node in ListPackageAssemblies(xml) do begin
+      assemblyData := XmlReadAssemblyIdentityData(node);
+      lbComponents.Items.Add(assemblyData.ToString);
+    end;
+  finally
+    xml := nil;
+  end;
+end;
+
+procedure TMainForm.tsFilesEnter(Sender: TObject);
+var xml: IXmlDocument;
+  NodeData: PNdPackageData;
+  node: IXmlNode;
+  assemblyData: TAssemblyIdentity;
+  assemblyId: int64;
+  j: integer;
+  files: TList<TFileEntryData>;
+begin
+  lbFiles.Items.Clear;
+  lbFiles.Sorted := false;
+
+  NodeData := vtPackages.GetNodeData(vtPackages.FocusedNode);
+  if (NodeData = nil) or (NodeData.Package = nil) then
+    exit;
+
+  xml := TXmlDocument.Create(GetWindowsDir()+'\servicing\Packages\'+NodeData.Package.Name+'.mum');
+  try
+    for node in ListPackageAssemblies(xml) do begin
+      assemblyData := XmlReadAssemblyIdentityData(node);
+      assemblyId := FDb.NeedAssembly(assemblyData);
+      files := FDb.GetAssemblyFiles(assemblyId);
+      try
+        for j := 0 to files.Count-1 do
+          lbFiles.Items.Add(files[j].destinationPath + '\' + files[j].name);
+      finally
+        FreeAndNil(files);
+      end;
+    end;
+  finally
+    xml := nil;
+  end;
+
+  lbFiles.Sorted := true;
+end;
+
 procedure TMainForm.Exit1Click(Sender: TObject);
 begin
   Close;
@@ -1222,6 +1352,69 @@ begin
 
   DismUninstall(packageNames);
   Reload;
+end;
+
+
+//Создаёт TStringList и заполняет его файлами из папки, по маске
+function FilesByMask(const AMask: string): TStringList;
+var sr: TSearchRec;
+  res: integer;
+begin
+  Result := TStringList.Create;
+  res := FindFirst(AMask, faAnyFile and not faDirectory, sr);
+  while res = 0 do begin
+    Result.Add(sr.Name);
+    res := FindNext(sr);
+  end;
+  SysUtils.FindClose(sr);
+end;
+
+//Parses all manifests in WinSxS\Manifests and adds/updates their data in the database.
+//Displays progress form.
+procedure TMainForm.ImportAssemblyManifests;
+var baseDir: string;
+  fnames: TStringList;
+  i: integer;
+  progress: TProgressForm;
+begin
+  baseDir := GetWindowsDir()+'\WinSxS\Manifests';
+  fnames := nil;
+
+  progress := TProgressForm.Create(Self);
+  try
+    progress.Show;
+
+    //Составляем список файлов
+    progress.Start('Building file list');
+    fnames := FilesByMask(baseDir+'\*.manifest');
+
+    FDb.BeginTransaction;
+
+    //Теперь загружаем содержимое.
+    progress.Start('Reading manifests', fnames.Count-1);
+    for i := 0 to fnames.Count-1 do begin
+      FDb.ImportManifest(baseDir+'\'+fnames[i]);
+      progress.Step();
+    end;
+
+    FDb.CommitTransaction;
+  finally
+    FreeAndNil(fnames);
+    FreeAndNil(progress);
+  end;
+end;
+
+procedure TMainForm.RebuildAssemblyDatabase;
+begin
+  FDb.Close;
+  DeleteFile(AppFolder+'\assembly.db');
+  FDb.Open(AppFolder+'\assembly.db');
+  ImportAssemblyManifests;
+end;
+
+procedure TMainForm.Rebuildassemblydatabase1Click(Sender: TObject);
+begin
+  RebuildAssemblyDatabase;
 end;
 
 end.

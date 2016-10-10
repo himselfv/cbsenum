@@ -12,6 +12,8 @@ object MainForm: TMainForm
   Font.Style = []
   Menu = MainMenu
   OldCreateOrder = False
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
@@ -176,12 +178,16 @@ object MainForm: TMainForm
     Top = 360
     Width = 686
     Height = 218
-    ActivePage = tsInfo
+    ActivePage = tsFiles
     Align = alBottom
     TabOrder = 2
     object tsInfo: TTabSheet
       Caption = 'Info'
       OnEnter = tsInfoEnter
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         678
         190)
@@ -200,6 +206,55 @@ object MainForm: TMainForm
         Width = 671
         Height = 97
         Anchors = [akLeft, akTop, akRight]
+        ItemHeight = 13
+        TabOrder = 0
+      end
+    end
+    object tsAssemblies: TTabSheet
+      Caption = 'Assemblies'
+      ImageIndex = 1
+      OnEnter = tsAssembliesEnter
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      object lbComponents: TListBox
+        Left = 0
+        Top = 0
+        Width = 678
+        Height = 190
+        Align = alClient
+        ItemHeight = 13
+        TabOrder = 0
+      end
+    end
+    object tsFiles: TTabSheet
+      Caption = 'Files'
+      ImageIndex = 2
+      OnEnter = tsFilesEnter
+      object lbFiles: TListBox
+        Left = 0
+        Top = 0
+        Width = 678
+        Height = 190
+        Align = alClient
+        ItemHeight = 13
+        TabOrder = 0
+      end
+    end
+    object tsRegistryKeys: TTabSheet
+      Caption = 'Registry keys'
+      ImageIndex = 3
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
+      object lbRegistryKeys: TListBox
+        Left = 0
+        Top = 0
+        Width = 678
+        Height = 190
+        Align = alClient
         ItemHeight = 13
         TabOrder = 0
       end
@@ -322,6 +377,13 @@ object MainForm: TMainForm
       object pmRestoreDefaltVisibilityAll: TMenuItem
         Caption = 'Restore default visibility for all'
         OnClick = pmRestoreDefaltVisibilityAllClick
+      end
+      object N4: TMenuItem
+        Caption = '-'
+      end
+      object Rebuildassemblydatabase1: TMenuItem
+        Caption = 'Rebuild assembly database'
+        OnClick = Rebuildassemblydatabase1Click
       end
     end
     object Service1: TMenuItem
