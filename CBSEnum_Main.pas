@@ -182,8 +182,6 @@ type
 
   protected //Assembly database
     FDb: TAssemblyDb;
-    procedure ImportAssemblyManifests;
-    procedure RebuildAssemblyDatabase;
 
   protected
     procedure UpdateFormCaption;
@@ -208,7 +206,7 @@ function IsPackageInList(const AList: TStringArray; APackageName: string): boole
 
 implementation
 uses Clipbrd, XmlDoc, XmlIntf, AccCtrl, AclHelpers, CBSEnum_JobProcessor, TakeOwnershipJob,
-  DecouplePackagesJob, FilenameUtils, ManifestEnum_Progress;
+  DecouplePackagesJob, FilenameUtils, AssemblyDbBuilder;
 
 {$R *.dfm}
 
@@ -1354,67 +1352,9 @@ begin
   Reload;
 end;
 
-
-//Создаёт TStringList и заполняет его файлами из папки, по маске
-function FilesByMask(const AMask: string): TStringList;
-var sr: TSearchRec;
-  res: integer;
-begin
-  Result := TStringList.Create;
-  res := FindFirst(AMask, faAnyFile and not faDirectory, sr);
-  while res = 0 do begin
-    Result.Add(sr.Name);
-    res := FindNext(sr);
-  end;
-  SysUtils.FindClose(sr);
-end;
-
-//Parses all manifests in WinSxS\Manifests and adds/updates their data in the database.
-//Displays progress form.
-procedure TMainForm.ImportAssemblyManifests;
-var baseDir: string;
-  fnames: TStringList;
-  i: integer;
-  progress: TProgressForm;
-begin
-  baseDir := GetWindowsDir()+'\WinSxS\Manifests';
-  fnames := nil;
-
-  progress := TProgressForm.Create(Self);
-  try
-    progress.Show;
-
-    //Составляем список файлов
-    progress.Start('Building file list');
-    fnames := FilesByMask(baseDir+'\*.manifest');
-
-    FDb.BeginTransaction;
-
-    //Теперь загружаем содержимое.
-    progress.Start('Reading manifests', fnames.Count-1);
-    for i := 0 to fnames.Count-1 do begin
-      FDb.ImportManifest(baseDir+'\'+fnames[i]);
-      progress.Step();
-    end;
-
-    FDb.CommitTransaction;
-  finally
-    FreeAndNil(fnames);
-    FreeAndNil(progress);
-  end;
-end;
-
-procedure TMainForm.RebuildAssemblyDatabase;
-begin
-  FDb.Close;
-  DeleteFile(AppFolder+'\assembly.db');
-  FDb.Open(AppFolder+'\assembly.db');
-  ImportAssemblyManifests;
-end;
-
 procedure TMainForm.Rebuildassemblydatabase1Click(Sender: TObject);
 begin
-  RebuildAssemblyDatabase;
+  RebuildAssemblyDatabase(FDb, AppFolder+'\assembly.db');
 end;
 
 end.
