@@ -1310,7 +1310,7 @@ end;
 procedure TMainForm.DismCleanup1Click(Sender: TObject);
 begin
   StartProcess(GetSystemDir()+'\dism.exe',
-    PChar('dism.exe /Online //Cleanup-Image /StartComponentCleanup'));
+    PChar('dism.exe /Online /Cleanup-Image /StartComponentCleanup'));
 end;
 
 procedure TMainForm.pmUninstallByListClick(Sender: TObject);
