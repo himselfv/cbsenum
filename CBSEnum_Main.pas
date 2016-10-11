@@ -104,6 +104,7 @@ type
     lbRegistryKeys: TListBox;
     N4: TMenuItem;
     Rebuildassemblydatabase1: TMenuItem;
+    DismCleanup1: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -149,6 +150,7 @@ type
     procedure tsAssembliesEnter(Sender: TObject);
     procedure Rebuildassemblydatabase1Click(Sender: TObject);
     procedure tsFilesEnter(Sender: TObject);
+    procedure DismCleanup1Click(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     FTotalPackages: integer;
@@ -1268,8 +1270,9 @@ begin
     for node in ListPackageAssemblies(xml) do begin
       assemblyData := XmlReadAssemblyIdentityData(node);
       assemblyId := FDb.NeedAssembly(assemblyData);
-      files := FDb.GetAssemblyFiles(assemblyId);
+      files := TList<TFileEntryData>.Create;
       try
+        FDb.GetAssemblyFiles(assemblyId, files);
         for j := 0 to files.Count-1 do
           lbFiles.Items.Add(files[j].destinationPath + '\' + files[j].name);
       finally
@@ -1302,6 +1305,12 @@ end;
 procedure TMainForm.Optionalfeatures1Click(Sender: TObject);
 begin
   StartProcess(GetSystemDir()+'\OptionalFeatures.exe', 'OptionalFeatures.exe');
+end;
+
+procedure TMainForm.DismCleanup1Click(Sender: TObject);
+begin
+  StartProcess(GetSystemDir()+'\dism.exe',
+    PChar('dism.exe /Online //Cleanup-Image /StartComponentCleanup'));
 end;
 
 procedure TMainForm.pmUninstallByListClick(Sender: TObject);

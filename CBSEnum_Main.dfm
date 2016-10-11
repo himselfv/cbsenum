@@ -135,6 +135,7 @@ object MainForm: TMainForm
       Width = 501
       Height = 336
       Align = alClient
+      BorderWidth = 1
       Header.AutoSizeIndex = 0
       Header.Font.Charset = DEFAULT_CHARSET
       Header.Font.Color = clWindowText
@@ -184,10 +185,6 @@ object MainForm: TMainForm
     object tsInfo: TTabSheet
       Caption = 'Info'
       OnEnter = tsInfoEnter
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         678
         190)
@@ -214,10 +211,6 @@ object MainForm: TMainForm
       Caption = 'Assemblies'
       ImageIndex = 1
       OnEnter = tsAssembliesEnter
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object lbComponents: TListBox
         Left = 0
         Top = 0
@@ -245,10 +238,6 @@ object MainForm: TMainForm
     object tsRegistryKeys: TTabSheet
       Caption = 'Registry keys'
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object lbRegistryKeys: TListBox
         Left = 0
         Top = 0
@@ -397,6 +386,10 @@ object MainForm: TMainForm
         Caption = 'Disk cleanup...'
         Hint = 'Run disk cleanup utility'
         OnClick = Diskcleanup1Click
+      end
+      object DismCleanup1: TMenuItem
+        Caption = 'DISM image cleanup...'
+        OnClick = DismCleanup1Click
       end
       object Optionalfeatures1: TMenuItem
         Caption = 'Optional features...'
