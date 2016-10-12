@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs, Menus,
   StdCtrls, ExtCtrls, ImgList, ComCtrls, ExtDlgs, VirtualTrees, Generics.Collections, Registry,
-  UniStrUtils, AssemblyDb;
+  UniStrUtils, AssemblyDb, AssemblyResourcesView;
 
 type
   TPackage = class
@@ -96,15 +96,10 @@ type
     N3: TMenuItem;
     pmCopySubmenu: TMenuItem;
     pmManageSubmenu: TMenuItem;
-    tsAssemblies: TTabSheet;
-    tsFiles: TTabSheet;
-    tsRegistryKeys: TTabSheet;
-    lbComponents: TListBox;
-    lbFiles: TListBox;
-    lbRegistryKeys: TListBox;
     N4: TMenuItem;
     Rebuildassemblydatabase1: TMenuItem;
     DismCleanup1: TMenuItem;
+    tsResources: TTabSheet;
     procedure FormShow(Sender: TObject);
     procedure vtPackagesGetNodeDataSize(Sender: TBaseVirtualTree;
       var NodeDataSize: Integer);
@@ -147,10 +142,9 @@ type
     procedure pmTakeRegistryOwnershipClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure tsAssembliesEnter(Sender: TObject);
     procedure Rebuildassemblydatabase1Click(Sender: TObject);
-    procedure tsFilesEnter(Sender: TObject);
     procedure DismCleanup1Click(Sender: TObject);
+    procedure tsResourcesEnter(Sender: TObject);
   protected
     FPackages: TPackageGroup;
     FTotalPackages: integer;
@@ -184,6 +178,7 @@ type
 
   protected //Assembly database
     FDb: TAssemblyDb;
+    FResources: TAssemblyResourcesForm;
 
   protected
     procedure UpdateFormCaption;
@@ -561,10 +556,17 @@ procedure TMainForm.FormCreate(Sender: TObject);
 begin
   FDb := TAssemblyDb.Create;
   FDb.Open(AppFolder+'\assembly.db');
+  FResources := TAssemblyResourcesForm.Create(Self);
+  FResources.ShowDependencies := true;
+  FResources.Db := FDb;
+  FResources.ManualDock(tsResources, tsResources, alClient);
+  FResources.Align := alClient;
+  FResources.Visible := true;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
+  FreeAndNil(FResources);
   FreeAndNil(FDb);
 end;
 
@@ -1184,6 +1186,7 @@ begin
   end;
 end;
 
+
 function XmlReadAssemblyIdentityData(ANode: IXmlNode): TAssemblyIdentity;
 begin
   Result.name := ANode.Attributes['name'];
@@ -1226,41 +1229,14 @@ begin
 end;
 
 
-procedure TMainForm.tsAssembliesEnter(Sender: TObject);
+procedure TMainForm.tsResourcesEnter(Sender: TObject);
 var xml: IXmlDocument;
   NodeData: PNdPackageData;
   node: IXmlNode;
   assemblyData: TAssemblyIdentity;
+  assemblyId: TAssemblyId;
 begin
-  lbComponents.Items.Clear;
-
-  NodeData := vtPackages.GetNodeData(vtPackages.FocusedNode);
-  if (NodeData = nil) or (NodeData.Package = nil) then
-    exit;
-
-  xml := TXmlDocument.Create(GetWindowsDir()+'\servicing\Packages\'+NodeData.Package.Name+'.mum');
-  try
-    for node in ListPackageAssemblies(xml) do begin
-      assemblyData := XmlReadAssemblyIdentityData(node);
-      lbComponents.Items.Add(assemblyData.ToString);
-    end;
-  finally
-    xml := nil;
-  end;
-end;
-
-procedure TMainForm.tsFilesEnter(Sender: TObject);
-var xml: IXmlDocument;
-  NodeData: PNdPackageData;
-  node: IXmlNode;
-  assemblyData: TAssemblyIdentity;
-  assemblyId: int64;
-  j: integer;
-  files: TList<TFileEntryData>;
-begin
-  lbFiles.Items.Clear;
-  lbFiles.Sorted := false;
-
+  FResources.Assemblies.Clear;
   NodeData := vtPackages.GetNodeData(vtPackages.FocusedNode);
   if (NodeData = nil) or (NodeData.Package = nil) then
     exit;
@@ -1270,21 +1246,14 @@ begin
     for node in ListPackageAssemblies(xml) do begin
       assemblyData := XmlReadAssemblyIdentityData(node);
       assemblyId := FDb.NeedAssembly(assemblyData);
-      files := TList<TFileEntryData>.Create;
-      try
-        FDb.GetAssemblyFiles(assemblyId, files);
-        for j := 0 to files.Count-1 do
-          lbFiles.Items.Add(files[j].destinationPath + '\' + files[j].name);
-      finally
-        FreeAndNil(files);
-      end;
+      FResources.Assemblies.Add(assemblyId);
     end;
   finally
     xml := nil;
   end;
-
-  lbFiles.Sorted := true;
+  FResources.Reload;
 end;
+
 
 procedure TMainForm.Exit1Click(Sender: TObject);
 begin

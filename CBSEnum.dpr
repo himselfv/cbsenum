@@ -5,6 +5,8 @@ uses
   CBSEnum_Main in 'CBSEnum_Main.pas' {MainForm},
   AclHelpers in 'AclHelpers.pas',
   CBSEnum_JobProcessor in 'CBSEnum_JobProcessor.pas' {JobProcessorForm},
+  CommonResources in '..\ManifestEnum\CommonResources.pas',
+  DelayLoadTree in '..\ManifestEnum\Views\DelayLoadTree.pas',
   TakeOwnershipJob in 'TakeOwnershipJob.pas',
   DecouplePackagesJob in 'DecouplePackagesJob.pas';
 

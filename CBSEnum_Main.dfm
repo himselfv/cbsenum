@@ -179,7 +179,7 @@ object MainForm: TMainForm
     Top = 360
     Width = 686
     Height = 218
-    ActivePage = tsFiles
+    ActivePage = tsInfo
     Align = alBottom
     TabOrder = 2
     object tsInfo: TTabSheet
@@ -207,46 +207,10 @@ object MainForm: TMainForm
         TabOrder = 0
       end
     end
-    object tsAssemblies: TTabSheet
-      Caption = 'Assemblies'
+    object tsResources: TTabSheet
+      Caption = 'Resources'
       ImageIndex = 1
-      OnEnter = tsAssembliesEnter
-      object lbComponents: TListBox
-        Left = 0
-        Top = 0
-        Width = 678
-        Height = 190
-        Align = alClient
-        ItemHeight = 13
-        TabOrder = 0
-      end
-    end
-    object tsFiles: TTabSheet
-      Caption = 'Files'
-      ImageIndex = 2
-      OnEnter = tsFilesEnter
-      object lbFiles: TListBox
-        Left = 0
-        Top = 0
-        Width = 678
-        Height = 190
-        Align = alClient
-        ItemHeight = 13
-        TabOrder = 0
-      end
-    end
-    object tsRegistryKeys: TTabSheet
-      Caption = 'Registry keys'
-      ImageIndex = 3
-      object lbRegistryKeys: TListBox
-        Left = 0
-        Top = 0
-        Width = 678
-        Height = 190
-        Align = alClient
-        ItemHeight = 13
-        TabOrder = 0
-      end
+      OnEnter = tsResourcesEnter
     end
   end
   object PopupMenu: TPopupMenu
