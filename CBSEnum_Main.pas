@@ -954,6 +954,14 @@ begin
   PackageNames := GetSelectedPackageNames();
   if Length(PackageNames) <= 0 then exit;
 
+  //Sort the array in reverse, so that packages with ~EN_us suffixes are deleted earlier (otherwise they get dependency-deleted first)
+  //Ideally we should just check dependencies and skip stuff already in it
+  TArray.Sort<string>(PackageNames, TDelegatedComparer<string>.Construct(
+    function(const Left, Right: string): Integer
+    begin
+      Result := CompareText(Left, Right);
+    end));
+
   if Length(PackageNames) = 1 then
     AConfirmationText := 'Do you really want to uninstall'#13
     +PackageNames[0]+'?'+#13
