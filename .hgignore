@@ -10,3 +10,7 @@ __history/*
 # Binary
 *.dll
 *.exe
+
+# Releases
+Win32/*
+Win64/*
