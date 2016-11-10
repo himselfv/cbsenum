@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs, Menus,
   StdCtrls, ExtCtrls, ImgList, ComCtrls, ExtDlgs, VirtualTrees, Generics.Collections, Registry,
-  UniStrUtils, AssemblyDb, AssemblyResourcesView;
+  UniStrUtils, AssemblyDb, AssemblyDb.Assemblies, AssemblyResourcesView;
 
 type
   TPackage = class
@@ -1206,7 +1206,7 @@ begin
   try
     for node in ListPackageAssemblies(xml) do begin
       assemblyData := XmlReadAssemblyIdentityData(node);
-      assemblyId := FDb.NeedAssembly(assemblyData);
+      assemblyId := FDb.Assemblies.NeedAssembly(assemblyData);
       FResources.Assemblies.Add(assemblyId);
     end;
   finally

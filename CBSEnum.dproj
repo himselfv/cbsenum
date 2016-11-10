@@ -46,7 +46,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_UnitSearchPath>..\ManifestEnum;$(SHARE)\Lib\sqlite3;..\ManifestEnum\Views;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\ManifestEnum;$(SHARE)\Lib\sqlite3;..\ManifestEnum\Views;..\ManifestEnum\Db;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <Manifest_File>None</Manifest_File>
         <VerInfo_Keys>CompanyName=;FileDescription=CBSEnum tool;FileVersion=0.9.0.0;InternalName=;LegalCopyright=me@boku.ru;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=A tool to view and manage CBS packages on Windows</VerInfo_Keys>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
