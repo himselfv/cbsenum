@@ -12,6 +12,8 @@ const
   DOMAIN_ALIAS_RID_ADMINS = $00000220;
 
   SE_TAKE_OWNERSHIP_NAME = 'SeTakeOwnershipPrivilege';
+  SE_BACKUP_NAME = 'SeBackupPrivilege';
+  SE_RESTORE_NAME = 'SeRestorePrivilege';
 
   OBJECT_INHERIT_ACE       = 1;
   CONTAINER_INHERIT_ACE    = 2;
