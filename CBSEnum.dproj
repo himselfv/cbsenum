@@ -109,9 +109,11 @@
         <DCCReference Include="AclHelpers.pas"/>
         <DCCReference Include="CBSEnum_JobProcessor.pas">
             <Form>JobProcessorForm</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="..\ManifestEnum\CommonResources.pas"/>
+        <DCCReference Include="AclHelpers.pas"/>
+        <DCCReference Include="..\ManifestEnum\CommonResources.pas">
+            <Form>ResourceModule</Form>
+        </DCCReference>
         <DCCReference Include="..\ManifestEnum\Views\DelayLoadTree.pas"/>
         <DCCReference Include="TakeOwnershipJob.pas"/>
         <DCCReference Include="DecouplePackagesJob.pas"/>

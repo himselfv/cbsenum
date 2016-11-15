@@ -3,9 +3,9 @@ program CBSEnum;
 uses
   Vcl.Forms,
   CBSEnum_Main in 'CBSEnum_Main.pas' {MainForm},
-  AclHelpers in 'AclHelpers.pas',
   CBSEnum_JobProcessor in 'CBSEnum_JobProcessor.pas' {JobProcessorForm},
-  CommonResources in '..\ManifestEnum\CommonResources.pas',
+  AclHelpers in 'AclHelpers.pas',
+  CommonResources in '..\ManifestEnum\CommonResources.pas' {ResourceModule},
   DelayLoadTree in '..\ManifestEnum\Views\DelayLoadTree.pas',
   TakeOwnershipJob in 'TakeOwnershipJob.pas',
   DecouplePackagesJob in 'DecouplePackagesJob.pas';

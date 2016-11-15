@@ -1148,15 +1148,27 @@ begin
 end;
 
 
-function XmlReadAssemblyIdentityData(ANode: IXmlNode): TAssemblyIdentity;
+function textAttribute(const ANode: IXmlNode; const AAttribName: string): string;
 begin
-  Result.name := ANode.Attributes['name'];
-  Result.language := ANode.Attributes['language'];
-  Result.buildType := ANode.Attributes['buildType'];
-  Result.processorArchitecture := ANode.Attributes['processorArchitecture'];
-  Result.version := ANode.Attributes['version'];
-  Result.publicKeyToken := ANode.Attributes['publicKeyToken'];
+  if ANode.HasAttribute(AAttribName) then
+    Result := ANode.attributes[AAttribName]
+  else
+    Result := '';
 end;
+
+//Parses a given assemblyIdentity node, extracting all the fields that identify an assembly
+function XmlReadAssemblyIdentityData(const ANode: IXmlNode): TAssemblyIdentity;
+begin
+  Result.name := textAttribute(ANode, 'name');
+  Result.type_ := textAttribute(ANode, 'type');
+  Result.language := textAttribute(ANode, 'language');
+  Result.buildType := textAttribute(ANode, 'buildType');
+  Result.processorArchitecture := textAttribute(ANode, 'processorArchitecture');
+  Result.version := textAttribute(ANode, 'version');
+  Result.publicKeyToken := textAttribute(ANode, 'publicKeyToken');
+  Result.versionScope := textAttribute(ANode, 'versionScope');
+end;
+
 
 type
   TXmlNodeList = array of IXmlNode;
@@ -1189,6 +1201,11 @@ begin
   end;
 end;
 
+
+procedure Log(const msg: string);
+begin
+  MessageBox(0, PChar(msg), PChar('Log'), 0);
+end;
 
 procedure TMainForm.tsResourcesEnter(Sender: TObject);
 var xml: IXmlDocument;

@@ -43,8 +43,6 @@ var
   OnLog: TMsgEvent;
 {$ENDIF}
 
-procedure Log(const msg: string);// inline;
-
 function LookupPrivilegeValue(lpSystemName, lpName: LPCWSTR): TLuid;
 
 function SetPrivilege(hToken: THandle; const APrivilege: TLuid; const AValue: boolean): boolean; overload;
