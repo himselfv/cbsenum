@@ -14,6 +14,7 @@ const
   SE_TAKE_OWNERSHIP_NAME = 'SeTakeOwnershipPrivilege';
   SE_BACKUP_NAME = 'SeBackupPrivilege';
   SE_RESTORE_NAME = 'SeRestorePrivilege';
+  SE_SECURITY_NAME = 'SeSecurityPrivilege';
 
   OBJECT_INHERIT_ACE       = 1;
   CONTAINER_INHERIT_ACE    = 2;
@@ -49,6 +50,24 @@ function LookupPrivilegeValue(lpSystemName, lpName: LPCWSTR): TLuid;
 
 function SetPrivilege(hToken: THandle; const APrivilege: TLuid; const AValue: boolean): boolean; overload;
 function SetPrivilege(hToken: THandle; const APrivilege: string; const AValue: boolean): boolean; overload;
+
+{
+This is a sort of a wrapper shortcut. Usage:
+if ClaimPrivilege(SE_PRIVILEGE_NAME, hPriv) <> 0 then begin
+  ...
+  ReleasePrivilege(hPriv);
+end;
+}
+type
+  TPrivToken = record
+    hProcToken: THandle;
+    luid: TLuid;
+  end;
+
+function ClaimPrivilege(const APrivilege: TLuid; out AToken: TPrivToken): boolean; overload;
+function ClaimPrivilege(const APrivilege: string; out AToken: TPrivToken): boolean; overload; inline;
+procedure ReleasePrivilege(const AToken: TPrivToken); overload;
+
 
 function AllocateSidBuiltinAdministrators: PSID;
 
@@ -105,6 +124,42 @@ begin
     Result := SetPrivilege(hToken, sePrivilege, AValue);
 end;
 
+function ClaimPrivilege(const APrivilege: TLuid; out AToken: TPrivToken): boolean;
+var err: integer;
+begin
+  AToken.luid := APrivilege;
+  if not OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, AToken.hProcToken) then begin
+    Result := false;
+    exit;
+  end;
+  if not SetPrivilege(AToken.hProcToken, APrivilege, true) then begin
+    err := GetLastError();
+    CloseHandle(AToken.hProcToken); //can modify LastError
+    AToken.hProcToken := 0;
+    SetLastError(err);
+    Result := false;
+  end;
+  Result := true;
+end;
+
+function ClaimPrivilege(const APrivilege: string; out AToken: TPrivToken): boolean; overload;
+var sePrivilege: TLuid;
+begin
+  if not Windows.LookupPrivilegeValue(nil, PChar(APrivilege), sePrivilege) then begin
+    Result := false;
+    exit;
+  end;
+  Result := ClaimPrivilege(sePrivilege, AToken);
+end;
+
+procedure ReleasePrivilege(const AToken: TPrivToken); overload;
+begin
+  if AToken.hProcToken = 0 then exit;
+  SetPrivilege(AToken.hProcToken, AToken.luid, false);
+  CloseHandle(AToken.hProcToken);
+end;
+
+
 //Allocates a SID for BUILTIN\Administrators. SID has to be freed with FreeSid.
 function AllocateSidBuiltinAdministrators: PSID;
 var SIDAuthNT: SID_IDENTIFIER_AUTHORITY;
@@ -154,6 +209,7 @@ var pDescriptor: PSecurityDescriptor;
   pNewAccess: EXPLICIT_ACCESS;
 begin
   pNewDacl := nil;
+  pDescriptor := nil;
 
   Log('GetNamedSecurityInfo: '+AObjectName);
   Result := GetNamedSecurityInfo(PChar(AObjectName), AObjectType, DACL_SECURITY_INFORMATION,
