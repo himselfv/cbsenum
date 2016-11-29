@@ -77,7 +77,7 @@ function SwitchOwnership(const AObjectName: string; AObjectType: SE_OBJECT_TYPE;
   aNewOwner: PSID; out aPreviousOwner: PSID; out pDescriptor: PSECURITY_DESCRIPTOR): cardinal;
 
 function AddExplicitPermissions(const AObjectName: string; AObjectType: SE_OBJECT_TYPE; aTrustee: PSID;
-  APermissions: cardinal): cardinal;
+  APermissions: cardinal; APreviousPermissions: PCardinal = nil): cardinal;
 
 
 implementation
@@ -200,7 +200,7 @@ end;
 
 //Adds access permissions for a trustee, if those were not already present.
 function AddExplicitPermissions(const AObjectName: string; AObjectType: SE_OBJECT_TYPE; aTrustee: PSID;
-  APermissions: cardinal): cardinal;
+  APermissions: cardinal; APreviousPermissions: PCardinal): cardinal;
 var pDescriptor: PSecurityDescriptor;
   pDacl: PACL;
   i: integer;
@@ -236,6 +236,8 @@ begin
 
       Log('Existing grant_entry found');
      //Entry exist!
+      if APreviousPermissions <> nil then
+        APreviousPermissions^ := PACCESS_ALLOWED_ACE(pAce)^.Mask;
       Result := ERROR_SUCCESS;
       exit;
     end;
@@ -258,6 +260,9 @@ begin
     Log('SetNamedSecurityInfo');
     Result := SetNamedSecurityInfo(PChar(AObjectName), AObjectType, DACL_SECURITY_INFORMATION,
       nil, nil, pNewDacl, nil);
+
+    if APreviousPermissions <> nil then
+      APreviousPermissions^ := 0;
   finally
     LocalFree(NativeUInt(pDescriptor));
     if pNewDacl <> nil then
