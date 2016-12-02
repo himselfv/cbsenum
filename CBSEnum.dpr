@@ -8,7 +8,8 @@ uses
   CommonResources in '..\ManifestEnum\CommonResources.pas' {ResourceModule},
   DelayLoadTree in '..\ManifestEnum\Views\DelayLoadTree.pas',
   TakeOwnershipJob in 'TakeOwnershipJob.pas',
-  DecouplePackagesJob in 'DecouplePackagesJob.pas';
+  DecouplePackagesJob in 'DecouplePackagesJob.pas',
+  WildcardMatching in 'WildcardMatching.pas';
 
 {$R *.res}
 
