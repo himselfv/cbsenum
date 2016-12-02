@@ -8,10 +8,12 @@ function GetWindowsDir: string;
 
 function StartProcess(const AProgramName, ACommandLine: string): TProcessInformation;
 procedure RegeditOpenAndNavigate(const ARegistryPath: string);
+procedure ShellOpen(const sCommand: string; const sParams: string = '');
+procedure ExplorerAtFile(const AFilename: string);
 
 
 implementation
-uses Registry;
+uses Registry, ShellAPI;
 
 function GetSystemDir: string;
 var
@@ -58,6 +60,17 @@ begin
     FreeAndNil(reg);
   end;
   StartProcess(GetWindowsDir()+'\regedit.exe', 'regedit.exe');
+end;
+
+procedure ShellOpen(const sCommand: string; const sParams: string = '');
+begin
+  ShellExecute(0, 'open', PChar(sCommand), PChar(sParams), '', SW_SHOW);
+end;
+
+procedure ExplorerAtFile(const AFilename: string);
+begin
+  ShellExecute(0, '', PChar('explorer.exe'), PChar('/select,"'+AFilename+'"'),
+    '', SW_SHOW);
 end;
 
 end.
