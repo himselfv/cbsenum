@@ -69,7 +69,11 @@ function ClaimPrivilege(const APrivilege: string; out AToken: TPrivToken): boole
 procedure ReleasePrivilege(const AToken: TPrivToken); overload;
 
 
+function AllocateSidBuiltin(Group: DWORD): PSID;
 function AllocateSidBuiltinAdministrators: PSID;
+
+function IsUserInBuiltinGroup(Group: DWORD): BOOL;
+function IsUserAdmin: BOOL;
 
 //pDescriptor has to be LocalFree()d, other out-parameters don't.
 function SetOwnership(const AObjectName: string; AObjectType: SE_OBJECT_TYPE; aNewOwner: PSID): cardinal;
@@ -94,6 +98,10 @@ procedure Log(const msg: string);
 begin
 end;
 {$ENDIF}
+
+function CheckTokenMembership(TokenHandle: THandle; SidToCheck: PSID;
+  out IsMember: BOOL): BOOL; stdcall; external advapi32;
+
 
 //A version of LookupPrivilegeValue which handles failure by throwing error
 function LookupPrivilegeValue(lpSystemName, lpName: LPCWSTR): TLuid;
@@ -160,6 +168,16 @@ begin
 end;
 
 
+//Allocates a SID for a BUILTIN group. SID has to be freed with FreeSid
+function AllocateSidBuiltin(Group: DWORD): PSID;
+var SIDAuthNT: SID_IDENTIFIER_AUTHORITY;
+begin
+  SIDAuthNT := SECURITY_NT_AUTHORITY;
+  if not AllocateAndInitializeSid(@SIDAuthNT, 2, SECURITY_BUILTIN_DOMAIN_RID,
+    Group, 0, 0, 0, 0, 0, 0, Result) then
+    RaiseLastOsError();
+end;
+
 //Allocates a SID for BUILTIN\Administrators. SID has to be freed with FreeSid.
 function AllocateSidBuiltinAdministrators: PSID;
 var SIDAuthNT: SID_IDENTIFIER_AUTHORITY;
@@ -169,6 +187,34 @@ begin
     DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, Result) then
     RaiseLastOsError();
 end;
+
+//Returns true if the user is a member of a given builtin group
+function IsUserInBuiltinGroup(Group: DWORD): BOOL;
+var sidGroup: PSID;
+begin
+  sidGroup := AllocateSidBuiltin(Group);
+  try
+    if not CheckTokenMembership(0, sidGroup, Result) then
+      Result := False;
+  finally
+    FreeSid(sidGroup);
+  end;
+end;
+
+//Returns true if you are currently running with admin privileges
+//Under Vista+ will return false when non-elevated.
+function IsUserAdmin: BOOL;
+var sidAdmin: PSID;
+begin
+  sidAdmin := AllocateSidBuiltinAdministrators;
+  try
+    if not CheckTokenMembership(0, sidAdmin, Result) then
+      Result := False;
+  finally
+    FreeSid(sidAdmin);
+  end;
+end;
+
 
 //Replaces ownership for the object
 function SetOwnership(const AObjectName: string; AObjectType: SE_OBJECT_TYPE; aNewOwner: PSID): cardinal;
