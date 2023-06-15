@@ -5,6 +5,8 @@ uses SysUtils, Windows;
 
 function GetSystemDir: string;
 function GetWindowsDir: string;
+function GetModuleFilenameStr(hModule: HMODULE = 0): string;
+function AppFolder: string;
 
 function StartProcess(const AProgramName, ACommandLine: string): TProcessInformation;
 procedure RegeditOpenAndNavigate(const ARegistryPath: string);
@@ -31,6 +33,43 @@ begin
    GetWindowsDirectory(Buffer, MAX_PATH - 1);
    SetLength(Result, StrLen(Buffer));
    Result := Buffer;
+end;
+
+//Max length, in symbols, of supported image path size.
+const
+  MAX_PATH_LEN = 8192;
+
+function GetModuleFilenameStr(hModule: HMODULE = 0): string;
+var nSize, nRes: dword;
+begin
+  nSize := 256;
+  SetLength(Result, nSize);
+
+  nRes := GetModuleFilenameW(hModule, @Result[1], nSize);
+  while (nRes <> 0) and (nRes >= nSize) and (nSize < MAX_PATH_LEN) do begin
+    nSize := nSize * 2;
+    SetLength(Result, nSize);
+    nRes := GetModuleFilenameW(hModule, @Result[1], nSize);
+  end;
+
+  if nRes = 0 then begin
+    Result := '';
+    exit;
+  end;
+
+  if nRes >= nSize then begin
+    Result := '';
+    exit;
+  end;
+
+  SetLength(Result, nRes);
+end;
+
+function AppFolder: string;
+begin
+  Result := GetModuleFilenameStr();
+  if Result <> '' then
+    Result := SysUtils.ExtractFilePath(Result);
 end;
 
 function StartProcess(const AProgramName, ACommandLine: string): TProcessInformation;
